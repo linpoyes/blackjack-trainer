@@ -4,8 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>戰勝21點 · Blackjack Strategy Trainer</title>
-<meta name="description" content="21點基本策略練習：查表檢討、實戰模擬、策略表、練習記錄。8副牌 S17 DAS 不可投降。">
+<title>戰勝21點</title>
+<meta name="description" content="21點基本策略練習器">
+
+<!-- 分享出去時的預覽 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="戰勝21點">
+<meta property="og:description" content="21點基本策略練習器">
+<meta property="og:url" content="https://linpoyes.github.io/blackjack-trainer/">
+<meta property="og:image" content="https://linpoyes.github.io/blackjack-trainer/icon-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- 加到手機主畫面 -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0F1214">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="戰勝21點">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 /* 全部使用系統字型：不連外、離線可用、開啟不卡 */
 :root{
@@ -21,14 +38,14 @@
 html{background:var(--bg);-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:var(--sans);
-  font-size:18px;line-height:1.7;padding-bottom:20px}
+  font-size:18px;line-height:1.7;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 .wrap{max-width:600px;margin:0 auto;padding:0 20px}
 b,strong{font-weight:700}
 .label{font-family:var(--mono);font-size:11.5px;font-weight:500;
   letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-header{padding:20px 0 0}
+header{padding:calc(20px + env(safe-area-inset-top)) 0 0}
 .brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
   padding-bottom:11px;border-bottom:1px solid var(--hair-2)}
 h1{font-size:19px;font-weight:600;margin:0;line-height:1.3}
@@ -166,7 +183,7 @@ nav button[aria-selected="true"]::after{transform:scaleX(1)}
 .res{font-family:var(--mono);font-size:13px;margin-top:5px}
 
 /* ── thumb dock ── */
-.dock{position:sticky;bottom:0;z-index:20;padding:11px 0 13px;margin-top:12px;
+.dock{position:sticky;bottom:0;z-index:20;padding:11px 0 calc(13px + env(safe-area-inset-bottom));margin-top:12px;
   background:linear-gradient(180deg,rgba(15,18,20,0) 0%,var(--bg) 34%)}
 .acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .act{position:relative;overflow:hidden;border:1px solid var(--hair-2);border-radius:3px;

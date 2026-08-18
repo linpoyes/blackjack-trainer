@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="felt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A4536"/>
+      <stop offset="100%" stop-color="#0C2019"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E4C77A"/>
+      <stop offset="55%" stop-color="#C6A34B"/>
+      <stop offset="100%" stop-color="#9C7C2E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#felt)"/>
+
+  <g transform="translate(512 512) scale(1.12) translate(-512 -512)">
+  <!-- 兩張撲克牌：一張斜放在後 -->
+  <g transform="translate(512 560)">
+    <g transform="rotate(-14) translate(-250 -300)">
+      <rect width="420" height="600" rx="46" fill="#D8D3C7"/>
+    </g>
+    <g transform="rotate(6) translate(-210 -300)">
+      <rect width="420" height="600" rx="46" fill="#F7F5F0"/>
+      <!-- 紅心，標示這是撲克牌 -->
+      <path transform="translate(210 468) scale(2.05)" fill="#B3332B"
+            d="M0 40 C-30 14 -52 -4 -52 -26 C-52 -44 -38 -54 -24 -54 C-12 -54 -4 -47 0 -40 C4 -47 12 -54 24 -54 C38 -54 52 -44 52 -26 C52 -4 30 14 0 40 Z"/>
+    </g>
+  </g>
+
+  <!-- 21 -->
+  <g transform="translate(512 452)">
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central"
+          font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+          font-size="392" font-weight="700" letter-spacing="-14"
+          fill="url(#brass)" stroke="#3A2C0C" stroke-width="9" paint-order="stroke">21</text>
+  </g>
+  </g>
+</svg>
