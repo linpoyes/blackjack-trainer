@@ -279,6 +279,26 @@ td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(2
 .log li span:not(:first-child){text-align:right;min-width:40px}
 .log li.now{color:var(--text)}
 .hide{display:none}
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;
+  justify-content:center;padding:24px calc(24px + env(safe-area-inset-left))}
+.gate.hide{display:none}
+.gatebox{width:100%;max-width:340px}
+.glogo{font-size:31px;font-weight:700;letter-spacing:3px;text-align:center;line-height:1.2}
+.glogo em{font-style:normal;color:var(--brass)}
+.gsub{text-align:center;color:var(--muted);font-size:14px;margin:7px 0 28px}
+.gate .label{display:block;margin:0 0 7px}
+.gin{width:100%;padding:13px 14px;margin-bottom:17px;border:1px solid var(--hair-2);border-radius:3px;
+  background:var(--surface);color:var(--text);font-family:inherit;font-size:17px}
+.gin:focus{outline:none;border-color:var(--brass)}
+#g-pin{font-family:var(--mono);letter-spacing:.55em;text-align:center;font-size:22px;padding-left:.55em}
+.gbtn{width:100%;padding:16px;border:1px solid var(--brass);border-radius:3px;
+  background:rgba(198,163,75,.12);color:var(--brass);font-family:inherit;font-size:17px;
+  font-weight:500;cursor:pointer;transition:background .16s}
+.gbtn:active{background:rgba(198,163,75,.26)}
+.gbtn:disabled{opacity:.4;cursor:default}
+.gmsg{min-height:22px;margin:13px 0 0;font-size:14.5px;text-align:center;color:var(--hit)}
+.gmsg.ok{color:var(--stand)}
+.ghint{color:var(--muted);font-size:13px;line-height:1.75;margin:20px 0 0}
 footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-size:13.5px;
   line-height:1.75;color:var(--muted)}
 .reset{background:none;border:0;color:var(--hit);cursor:pointer;font-size:13.5px;padding:0;
@@ -294,6 +314,19 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 </style>
 </head>
 <body>
+<div class="gate" id="gate">
+  <div class="gatebox">
+    <div class="glogo">戰勝<em>21</em>點</div>
+    <p class="gsub">基本策略練習器</p>
+    <label class="label" for="g-name">暱稱</label>
+    <input id="g-name" class="gin" type="text" maxlength="12" placeholder="例如：彥彥" autocomplete="off">
+    <label class="label" for="g-pin">四位數字密碼</label>
+    <input id="g-pin" class="gin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+    <button class="gbtn" id="g-go">開始練習</button>
+    <p class="gmsg" id="g-msg"></p>
+    <p class="ghint">第一次輸入的暱稱與密碼就是你的帳號。換手機、換瀏覽器打同一組，就會看到同一份記錄。</p>
+  </div>
+</div>
 <div class="wrap">
 <header>
   <div class="brand">
@@ -456,7 +489,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 </section>
 
 <footer>
-  <button class="reset" id="reset">清除全部記錄</button>
+  <button class="reset" id="switch">切換帳號</button>　·　<button class="reset" id="reset">清除本機記錄</button>
 </footer>
 </div>
 
@@ -515,17 +548,22 @@ const RL={11:"A",10:"10",9:"9",8:"8",7:"7",6:"6",5:"5",4:"4",3:"3",2:"2"};
 const STORE="bj-basic-strategy-stats";
 /* ═══ Google 試算表同步（Apps Script Web App · 免費）═══ */
 const SYNC_URL="https://script.google.com/macros/s/AKfycbyfi5U2PDcS7YT39Dl7pigNUaOQ61FrSOi7ps3ppQdpdGGxQJuEqZZssPSAJrs_DKnP/exec";
-const QKEY="bj-sync-queue",NKEY="bj-player";
+const QKEY="bj-sync-queue",NKEY="bj-player",PKEY="bj-pin";
 let syncing=false,lastSync=0;
-function playerName(){
-  var n=localStorage.getItem(NKEY);
-  if(!n){
-    var A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   /* 去掉易混淆的 I O 0 1 */
-    n="玩家-";
-    for(var i=0;i<4;i++)n+=A.charAt(Math.floor(Math.random()*A.length));
-    localStorage.setItem(NKEY,n);
-  }
-  return n;
+function playerName(){return localStorage.getItem(NKEY)||"";}
+function playerPin(){return localStorage.getItem(PKEY)||"";}
+/* 跨網域要讀回應只能走 JSONP；寫入才能用 POST no-cors */
+function jsonp(params,done){
+  var fn="__bj"+Math.random().toString(36).slice(2,9),sc=document.createElement("script"),fired=false;
+  function finish(d){if(fired)return;fired=true;
+    try{delete window[fn];}catch(e){window[fn]=undefined;}
+    if(sc.parentNode)sc.parentNode.removeChild(sc);done(d);}
+  window[fn]=function(d){finish(d);};
+  var q=[];for(var k in params)q.push(encodeURIComponent(k)+"="+encodeURIComponent(params[k]));
+  sc.src=SYNC_URL+"?"+q.join("&")+"&callback="+fn;
+  sc.onerror=function(){finish({ok:false,error:"network"});};
+  setTimeout(function(){finish({ok:false,error:"timeout"});},15000);
+  document.body.appendChild(sc);
 }
 function queueRow(r){
   if(!SYNC_URL)return;
@@ -538,7 +576,7 @@ function queueRow(r){
 }
 function qLen(){try{return JSON.parse(localStorage.getItem(QKEY)||"[]").length;}catch(e){return 0;}}
 function syncQueue(force){
-  if(!SYNC_URL||syncing)return;
+  if(!SYNC_URL||syncing||!playerName()||!playerPin())return;
   const now=Date.now();
   if(!force&&now-lastSync<15000)return;      /* 節流：最快 15 秒一次，不拖慢作答 */
   let q; try{q=JSON.parse(localStorage.getItem(QKEY)||"[]");}catch(e){return;}
@@ -547,7 +585,7 @@ function syncQueue(force){
   const batch=q.slice(0,60);
   fetch(SYNC_URL,{method:"POST",mode:"no-cors",keepalive:true,
     headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({player:playerName()||"匿名",rows:batch})})
+    body:JSON.stringify({player:playerName(),pin:playerPin(),rows:batch})})
   .then(function(){
     try{
       const rest=JSON.parse(localStorage.getItem(QKEY)||"[]").slice(batch.length);
@@ -1200,6 +1238,58 @@ document.addEventListener("keydown",function(e){
     if(inSim&&sim.phase==="done"){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
     else if(!inSim&&answered){e.preventDefault();deal();}
   }});
+/* ═══ 登入 ═══ */
+function applyRemote(days){
+  if(!stats.days)stats.days={};
+  (days||[]).forEach(function(d){
+    var cur=stats.days[d.day]||{q:0,c:0,h:0};
+    if(d.hands>(cur.q||0)){cur.q=d.hands;cur.c=d.correct;}   /* 以雲端較大者為準 */
+    stats.days[d.day]=cur;
+  });
+  var q=0,c=0;
+  Object.keys(stats.days).forEach(function(k){q+=stats.days[k].q||0;c+=stats.days[k].c||0;});
+  stats.total=q;stats.correct=c;
+  save();
+}
+function closeGate(){
+  $("gate").classList.add("hide");
+  paint();renderChart();renderLog();
+}
+function gateGo(){
+  var nm=$("g-name").value.trim(),pin=$("g-pin").value.trim(),msg=$("g-msg"),btn=$("g-go");
+  msg.className="gmsg";
+  if(!nm){msg.textContent="請輸入暱稱";return;}
+  if(!/^\d{4}$/.test(pin)){msg.textContent="密碼要剛好四位數字";return;}
+  btn.disabled=true;msg.textContent="連線中…";
+  jsonp({action:"login",name:nm,pin:pin},function(d){
+    btn.disabled=false;
+    if(!d||!d.ok){
+      msg.textContent=(d&&d.error==="bad_pin")?"這個暱稱已經有人用了，密碼不對"
+        :(d&&d.error==="bad_input")?"暱稱或密碼格式不對"
+        :"連不上伺服器，請檢查網路後再試";
+      return;
+    }
+    localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,pin);
+    applyRemote(d.days);
+    msg.className="gmsg ok";
+    msg.textContent=d.created?"帳號建立完成":("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
+    setTimeout(closeGate,600);
+  });
+}
+$("g-go").onclick=gateGo;
+["g-name","g-pin"].forEach(function(id){
+  $(id).addEventListener("keydown",function(ev){if(ev.key==="Enter")gateGo();});
+});
+$("switch").onclick=function(){
+  syncQueue(true);
+  localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);
+  $("g-name").value="";$("g-pin").value="";
+  $("g-msg").textContent="";$("g-msg").className="gmsg";
+  $("gate").classList.remove("hide");
+  window.scrollTo({top:0,behavior:"instant"});
+};
+if(playerName()&&playerPin())$("gate").classList.add("hide");
+
 setInterval(function(){syncQueue();},20000);
 load().then(function(){buildPickers();renderReviews();renderChart();renderPick();paintSync();});
 </script>
