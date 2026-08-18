@@ -279,9 +279,6 @@ td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(2
 .log li span:not(:first-child){text-align:right;min-width:40px}
 .log li.now{color:var(--text)}
 .hide{display:none}
-.nameinput{width:100%;margin-top:9px;padding:11px 12px;border:1px solid var(--hair-2);border-radius:2px;
-  background:var(--bg);color:var(--text);font-family:inherit;font-size:16px}
-.nameinput:focus{outline:none;border-color:var(--brass)}
 footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-size:13.5px;
   line-height:1.75;color:var(--muted)}
 .reset{background:none;border:0;color:var(--hit);cursor:pointer;font-size:13.5px;padding:0;
@@ -452,12 +449,6 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <div class="bdays" id="l-bdays"></div>
   <h2>明細</h2>
   <ul class="log" id="l-log"></ul>
-  <h2>試算表同步</h2>
-  <div class="goalwrap">
-    <div class="goalhead"><span class="label">練習者暱稱</span><span class="label" id="sync-state">—</span></div>
-    <input class="nameinput" id="sync-name" type="text" maxlength="20" placeholder="輸入暱稱，例如：彥彥" autocomplete="off">
-    <p class="note" style="margin-top:10px">每一手的判斷與每日手數會自動寫進共用的 Google 試算表。離線時先存在本機，回到網路自動補傳。</p>
-  </div>
   <h2>判斷錯誤回顧 <span id="err-count" style="letter-spacing:0"></span></h2>
   <ul class="errlist" id="err-list"></ul>
   <button class="next2" id="err-clear" style="margin-top:10px">清空錯誤記錄</button>
@@ -465,8 +456,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 </section>
 
 <footer>
-  記錄自動保存。<button class="reset" id="reset">清除全部記錄</button><br>
-  基本策略把莊家優勢壓到約 0.43%，目的是把長期損失降到最低，不構成獲利方法。實際下注前先設定單場止損。
+  <button class="reset" id="reset">清除全部記錄</button>
 </footer>
 </div>
 
@@ -527,7 +517,16 @@ const STORE="bj-basic-strategy-stats";
 const SYNC_URL="https://script.google.com/macros/s/AKfycbyfi5U2PDcS7YT39Dl7pigNUaOQ61FrSOi7ps3ppQdpdGGxQJuEqZZssPSAJrs_DKnP/exec";
 const QKEY="bj-sync-queue",NKEY="bj-player";
 let syncing=false,lastSync=0;
-function playerName(){return localStorage.getItem(NKEY)||"";}
+function playerName(){
+  var n=localStorage.getItem(NKEY);
+  if(!n){
+    var A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   /* 去掉易混淆的 I O 0 1 */
+    n="玩家-";
+    for(var i=0;i<4;i++)n+=A.charAt(Math.floor(Math.random()*A.length));
+    localStorage.setItem(NKEY,n);
+  }
+  return n;
+}
 function queueRow(r){
   if(!SYNC_URL)return;
   try{
@@ -1201,11 +1200,6 @@ document.addEventListener("keydown",function(e){
     if(inSim&&sim.phase==="done"){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
     else if(!inSim&&answered){e.preventDefault();deal();}
   }});
-(function(){
-  const ni=$("sync-name");
-  ni.value=playerName();
-  ni.onchange=function(){localStorage.setItem(NKEY,ni.value.trim());paintSync();};
-})();
 setInterval(function(){syncQueue();},20000);
 load().then(function(){buildPickers();renderReviews();renderChart();renderPick();paintSync();});
 </script>
