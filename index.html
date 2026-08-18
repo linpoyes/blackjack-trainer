@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>戰勝21點 · Blackjack Strategy Trainer</title>
+<meta name="description" content="21點基本策略練習：查表檢討、實戰模擬、策略表、練習記錄。8副牌 S17 DAS 不可投降。">
+<style>
+/* 全部使用系統字型：不連外、離線可用、開啟不卡 */
+:root{
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",sans-serif;
+  color-scheme:dark;
+  --bg:#0F1214;--surface:#171B1E;--surface-2:#1E2327;
+  --hair:rgba(237,235,230,.14);--hair-2:rgba(237,235,230,.28);
+  --text:#EDEBE6;--muted:#9AA0A2;--brass:#C6A34B;
+  --hit:#C1483C;--stand:#2E8B62;--dbl:#C08B2A;--split:#3D74A8;--card-red:#B3332B;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--sans);
+  font-size:18px;line-height:1.7;padding-bottom:20px}
+.wrap{max-width:600px;margin:0 auto;padding:0 20px}
+b,strong{font-weight:700}
+.label{font-family:var(--mono);font-size:11.5px;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header{padding:20px 0 0}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding-bottom:11px;border-bottom:1px solid var(--hair-2)}
+h1{font-size:19px;font-weight:600;margin:0;line-height:1.3}
+h1 em{font-style:normal;color:var(--brass)}
+.ruleset{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--hair-2);
+  padding:2px 0 11px;margin-top:11px}
+.rl{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--hair)}
+.rl span:first-child{color:var(--muted);font-size:14px}
+.rl span:last-child{font-family:var(--mono);font-size:14px;font-weight:500}
+.rl:nth-child(odd){padding-right:16px}.rl:nth-child(even){padding-left:16px}
+.hint{font-size:14px;color:var(--muted);margin:9px 0 0;line-height:1.6}
+
+nav{display:flex;gap:20px;margin:16px 0 0;border-bottom:1px solid var(--hair-2);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;padding:12px 0 13px;cursor:pointer;color:var(--muted);
+  font-family:inherit;font-size:15.5px;font-weight:500;position:relative;white-space:nowrap;transition:color .18s}
+nav button::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:var(--brass);transform:scaleX(0);transform-origin:left;transition:transform .22s}
+nav button[aria-selected="true"]{color:var(--text)}
+nav button[aria-selected="true"]::after{transform:scaleX(1)}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);margin:16px 0 16px;
+  border:1px solid var(--hair);border-radius:2px;background:var(--surface)}
+.metric{padding:10px 5px 9px;text-align:center;border-right:1px solid var(--hair)}
+.metric:last-child{border-right:0}
+.metric .v{font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:23px;font-weight:500;line-height:1.1;transition:color .25s}
+.metric .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin-top:4px;line-height:1.3}
+.metric.flash .v{color:var(--brass)}
+.metrics.five{grid-template-columns:repeat(5,1fr)}
+.metrics.five .metric{padding:10px 2px 9px}
+.metrics.five .metric .v{font-size:19px}
+.metrics.five .metric .k{font-size:8.5px;letter-spacing:.05em}
+.up{color:var(--stand)!important}.down{color:var(--hit)!important}
+
+.table{border:1px solid var(--hair-2);border-radius:3px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,#14352B 0%,#102A22 100%)}
+.table::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:3px}
+.table.win::after{box-shadow:inset 0 0 0 2px var(--stand)}
+.table.lose::after{box-shadow:inset 0 0 0 2px var(--hit)}
+.zone{padding:12px 13px 14px;text-align:center}
+.zone+.zone{border-top:1px solid rgba(237,235,230,.12)}
+.zone .label{margin-bottom:8px;display:block;color:rgba(237,235,230,.6)}
+.row{display:flex;gap:8px;justify-content:center;align-items:flex-end;flex-wrap:wrap;min-height:102px}
+.readout{margin-top:9px;font-size:14.5px;color:rgba(237,235,230,.72)}
+.readout b{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--text)}
+
+.card{position:relative;width:70px;height:100px;border-radius:6px;background:#F7F5F0;color:#16191B;
+  border:1px solid rgba(0,0,0,.35);box-shadow:0 2px 6px rgba(0,0,0,.35);
+  font-family:var(--sans);overflow:hidden}
+.card .ci{position:absolute;top:4px;left:6px;font-size:14px;font-weight:600;line-height:1;text-align:center}
+.card .ci em{display:block;font-style:normal;font-size:12px;margin-top:1px}
+.card .cp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:35px;line-height:1;padding-top:5px}
+.card.red{color:var(--card-red)}
+.card.sm{width:52px;height:74px}.card.sm .cp{font-size:26px}
+.card.sm .ci{font-size:12px;top:4px;left:5px}.card.sm .ci em{font-size:10px}
+.card.back{background:repeating-linear-gradient(45deg,#1D4E6B 0 5px,#16405A 5px 10px);border-color:rgba(0,0,0,.5)}
+.card.back .cp,.card.back .ci{opacity:0}
+.card.back::after{content:"";position:absolute;inset:5px;border:1px solid rgba(237,235,230,.35);border-radius:3px}
+.card.ghost{background:transparent;border:1px dashed rgba(237,235,230,.32);box-shadow:none;animation:none}
+.card.ghost::after{content:"?";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:24px;color:rgba(237,235,230,.3)}
+
+.picker{margin-top:12px;border:1px solid var(--hair);border-radius:2px;background:var(--surface);padding:12px 13px 13px}
+.prow{margin-bottom:11px}
+.prow .label{display:block;margin-bottom:7px}
+.pchips{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.pc{border:1px solid var(--hair-2);background:transparent;border-radius:2px;padding:11px 0;
+  font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text);
+  cursor:pointer;transition:background .14s,border-color .14s,transform .08s}
+.pc:active{transform:translateY(1px);background:var(--surface-2)}
+.pc[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
+.prow2{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:0}
+.next2{width:100%;margin-top:8px;padding:13px;border:1px dashed var(--hair-2);border-radius:3px;
+  background:transparent;color:var(--muted);font-family:inherit;font-size:15px;cursor:pointer;transition:all .14s}
+.next2:active{background:var(--surface-2);color:var(--text)}
+.next2:disabled{opacity:.35;cursor:default}
+.pausebar{display:none;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 14px;background:rgba(198,163,75,.16);border-bottom:1px solid var(--hair-2)}
+.table.paused .pausebar{display:flex}
+.table.paused .zone,.table.paused .gauge{opacity:.5}
+.pausebar .pt{font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--brass)}
+.pausebar button{border:1px solid var(--brass);background:rgba(198,163,75,.14);color:var(--brass);
+  border-radius:3px;padding:7px 18px;font-family:inherit;font-size:14px;cursor:pointer}
+.pausebar button:active{background:rgba(198,163,75,.28)}
+.tag-x{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  padding:1px 6px;border-radius:2px;margin-right:8px}
+.tag-x.err{background:var(--hit);color:#F7F5F0}
+.tag-x.qry{background:var(--surface-2);color:var(--muted);border:1px solid var(--hair-2)}
+.errlist{list-style:none;padding:0;margin:10px 0 0}
+.errlist li.day{font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;
+  color:var(--muted);padding:14px 0 6px;border-bottom:1px solid var(--hair-2);text-transform:uppercase}
+.errlist li.day:first-child{padding-top:2px}
+.errlist li.e{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:11px 0;border-bottom:1px solid var(--hair);font-size:15px;line-height:1.55}
+.errlist li.e .tm{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.errlist .src{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);
+  border:1px solid var(--hair-2);border-radius:2px;padding:1px 5px;margin-right:8px;vertical-align:1px}
+.errlist .hd{font-weight:700}
+.errlist .wrong{color:var(--hit)}
+.errlist .right{color:var(--stand);font-weight:700}
+.errlist li.none{padding:12px 0;color:var(--muted);font-size:15px}
+.errlist li.e{cursor:pointer;transition:background .14s}
+.errlist li.e:active{background:var(--surface-2)}
+.errlist li.e.open{background:var(--surface);border-bottom-color:transparent}
+.errlist li.e .tm em{font-style:normal;margin-left:6px;color:var(--brass)}
+.errlist li.epre{padding:4px 0 15px;border-bottom:1px solid var(--hair);background:var(--surface);
+  animation:slide .18s ease-out both}
+.epre .prow3{display:flex;align-items:center;gap:6px;padding:8px 12px 0;flex-wrap:wrap}
+.epre .vs{font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+  color:var(--muted);padding:0 8px}
+.epre .ewhy{font-size:14.5px;line-height:1.7;color:rgba(237,235,230,.85);padding:12px 12px 0}
+.epre .eact{display:flex;gap:6px;padding:12px 12px 0;flex-wrap:wrap}
+.epre .eact button{flex:1;min-width:150px}
+
+.gauge{display:flex;align-items:center;gap:10px;padding:9px 16px;
+  border-top:1px solid rgba(237,235,230,.12);background:rgba(0,0,0,.22)}
+.gauge .label{margin:0;white-space:nowrap}
+.bar{flex:1;height:4px;background:rgba(237,235,230,.16);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brass);transition:width .35s}
+.gauge .pct{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.gauge .sep{width:1px;height:14px;background:var(--hair-2);flex:0 0 1px}
+.gauge .pct.live{color:var(--text);min-width:42px;text-align:right}
+.gauge .pct.slow{color:var(--dbl)}
+
+.hands{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.hbox{border:1px solid rgba(237,235,230,.18);border-radius:3px;padding:9px;background:rgba(0,0,0,.18);
+  transition:border-color .2s,box-shadow .2s}
+.hbox.on{border-color:var(--brass);box-shadow:0 0 0 1px rgba(198,163,75,.35)}
+.hbox .label{margin-bottom:7px;font-size:10px}
+.hbox .readout{margin-top:8px;font-size:13px}.hbox .readout b{font-size:16px}
+.res{font-family:var(--mono);font-size:13px;margin-top:5px}
+
+/* ── thumb dock ── */
+.dock{position:sticky;bottom:0;z-index:20;padding:11px 0 13px;margin-top:12px;
+  background:linear-gradient(180deg,rgba(15,18,20,0) 0%,var(--bg) 34%)}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.act{position:relative;overflow:hidden;border:1px solid var(--hair-2);border-radius:3px;
+  background:var(--surface-2);color:var(--text);padding:17px 4px 15px;cursor:pointer;
+  font-family:inherit;font-size:15.5px;font-weight:500;display:flex;flex-direction:column;
+  align-items:center;gap:7px;transition:background .16s,border-color .16s,transform .08s}
+.act .k{font-family:var(--mono);font-size:14px;font-weight:600;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;border-radius:2px;color:#F7F5F0}
+.act[data-a="H"] .k{background:var(--hit)}
+.act[data-a="S"] .k{background:var(--stand)}
+.act[data-a="D"] .k{background:var(--dbl);color:#16191B}
+.act[data-a="P"] .k{background:var(--split)}
+.act:hover:not(:disabled){background:#262C30}
+.act:active:not(:disabled){transform:translateY(1px);background:#121618}
+.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.act:disabled{opacity:.28;cursor:default}
+.act.picked{border-color:var(--brass);background:#262C30}
+.next{width:100%;padding:19px;border:1px solid var(--brass);border-radius:3px;background:rgba(198,163,75,.09);
+  color:var(--brass);cursor:pointer;font-family:inherit;font-size:17px;font-weight:500;
+  transition:background .16s,transform .08s}
+.next:active{transform:translateY(1px);background:rgba(198,163,75,.18)}
+.next.arm{opacity:.3;pointer-events:none;border-color:var(--hair-2);color:var(--muted)}
+
+.panel{margin-bottom:12px;border:1px solid var(--hair-2);border-radius:3px;background:var(--surface);
+  animation:slide .2s ease-out both}
+@keyframes slide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel.ok{border-left:3px solid var(--stand)}
+.panel.no{border-left:3px solid var(--hit)}
+.panel.neutral{border-left:3px solid var(--muted)}
+.ph{padding:13px 15px 12px;border-bottom:1px solid var(--hair);display:flex;
+  align-items:baseline;justify-content:space-between;gap:12px}
+.ph .t{font-size:18px;font-weight:700}
+.panel.ok .ph .t{color:var(--stand)}.panel.no .ph .t{color:var(--hit)}
+.ph .sub{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right;line-height:1.5}
+.pb{padding:12px 15px 14px;font-size:15.5px;line-height:1.7;color:rgba(237,235,230,.88)}
+.entry{padding:11px 15px;border-top:1px solid var(--hair);font-size:15px;line-height:1.6}
+.entry .eh{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--hit);margin-bottom:4px}
+.entry .ok-h{color:var(--stand)}
+.entry .fix{font-weight:700;color:var(--text)}
+
+.toggles{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 0}
+.tg{border:1px solid var(--hair-2);background:transparent;border-radius:2px;padding:8px 13px;
+  font-size:14px;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .16s}
+.tg:hover{color:var(--text);background:var(--surface-2)}
+.tg[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+
+h2{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;margin:22px 0 11px;padding-bottom:8px;border-bottom:1px solid var(--hair-2)}
+.seg{display:flex;gap:7px;margin:20px 0 16px}
+.seg button{flex:1;background:transparent;border:1px solid var(--hair-2);border-radius:2px;padding:11px 2px;
+  font-family:inherit;font-size:15px;cursor:pointer;color:var(--muted);transition:all .16s}
+.seg button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-variant-numeric:tabular-nums}
+th,td{text-align:center;font-size:16px;height:40px;padding:0;font-weight:500}
+thead th{font-size:13px;color:var(--muted);height:30px;font-weight:400;border-bottom:1px solid var(--hair-2)}
+th.rh{text-align:right;padding-right:12px;width:76px;font-size:14px;white-space:nowrap;
+  color:var(--text);border-right:1px solid var(--hair-2)}
+tbody tr td{border-bottom:1px solid rgba(15,18,20,.65)}
+td{color:#F2F0EB}
+td.H{background:var(--hit)}td.S{background:var(--stand)}td.D{background:var(--dbl);color:#16191B}
+td.P{background:var(--split)}
+td.miss{position:relative}
+td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(255,255,255,.9);border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;font-size:14px;color:var(--muted)}
+.legend i{display:inline-block;width:13px;height:13px;border-radius:2px;margin-right:7px;vertical-align:-2px}
+.note{font-size:14.5px;line-height:1.75;margin-top:16px;color:rgba(237,235,230,.82)}
+.rank{list-style:none;padding:0;margin:10px 0 0;font-size:15px}
+.rank li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.rank .n{font-family:var(--mono);color:var(--muted);white-space:nowrap;font-size:14px}
+
+/* ── daily log ── */
+.goalwrap{border:1px solid var(--hair);border-radius:2px;background:var(--surface);padding:14px 16px}
+.goalhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.goalhead .big{font-family:var(--mono);font-size:30px;font-weight:600;line-height:1}
+.goalhead .big em{font-style:normal;font-size:15px;color:var(--muted)}
+.gbar{height:7px;background:rgba(237,235,230,.14);border-radius:4px;overflow:hidden}
+.gbar i{display:block;height:100%;background:var(--brass);transition:width .5s}
+.gbar i.done{background:var(--stand)}
+.bars{display:flex;align-items:flex-end;gap:4px;height:132px;margin-top:6px;
+  padding-top:8px;border-bottom:1px solid var(--hair-2)}
+.bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
+.bcol i{display:block;width:100%;max-width:26px;background:rgba(198,163,75,.55);border-radius:1px 1px 0 0;
+  min-height:2px;transition:height .4s}
+.bcol.now i{background:var(--stand)}
+.bcol .q{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.bdays{display:flex;gap:4px;margin-top:6px}
+.bdays span{flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.log{list-style:none;padding:0;margin:12px 0 0;font-family:var(--mono);font-size:14px}
+.log li{display:grid;grid-template-columns:1fr auto auto auto auto;gap:9px;padding:9px 0;
+  border-bottom:1px solid var(--hair);color:var(--muted)}
+.log li.head{color:var(--text);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;border-color:var(--hair-2)}
+.log li span:not(:first-child){text-align:right;min-width:40px}
+.log li.now{color:var(--text)}
+.hide{display:none}
+.nameinput{width:100%;margin-top:9px;padding:11px 12px;border:1px solid var(--hair-2);border-radius:2px;
+  background:var(--bg);color:var(--text);font-family:inherit;font-size:16px}
+.nameinput:focus{outline:none;border-color:var(--brass)}
+footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-size:13.5px;
+  line-height:1.75;color:var(--muted)}
+.reset{background:none;border:0;color:var(--hit);cursor:pointer;font-size:13.5px;padding:0;
+  font-family:inherit;text-decoration:underline;text-underline-offset:3px}
+
+@media (max-width:400px){
+  .wrap{padding:0 14px}
+  .card{width:64px;height:92px}.card .cp{font-size:33px}
+  .acts{gap:6px}.act{font-size:15px}
+  .metric .v{font-size:23px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <h1>Blackjack <em>Strategy Trainer</em></h1>
+    <span class="label">Macau · Low limit</span>
+  </div>
+  <div class="ruleset">
+    <div class="rl"><span>牌盒</span><span>8 副</span></div>
+    <div class="rl"><span>莊家軟 17</span><span>停牌 S17</span></div>
+    <div class="rl"><span>Blackjack</span><span>3 : 2</span></div>
+    <div class="rl"><span>分牌後加倍</span><span>可 DAS</span></div>
+    <div class="rl"><span>投降</span><span>不可</span></div>
+    <div class="rl"><span>理論莊家優勢</span><span>≈ 0.43%</span></div>
+  </div>
+  <p class="hint">上桌前核對桌面規則。若標示 Dealer hits soft 17 或 Blackjack pays 6:5，策略表與優勢都會改變。</p>
+</header>
+
+<nav>
+  <button id="tab-drill" aria-selected="true">查表檢討</button>
+  <button id="tab-sim" aria-selected="false">實戰模擬</button>
+  <button id="tab-chart" aria-selected="false">策略表</button>
+  <button id="tab-log" aria-selected="false">練習記錄</button>
+</nav>
+
+<!-- ══ DRILL / REVIEW ══ -->
+<section id="view-drill">
+  <div class="metrics">
+    <div class="metric" id="mt-acc"><div class="v" id="s-acc">—</div><div class="k">正確率</div></div>
+    <div class="metric" id="mt-streak"><div class="v" id="s-streak">0</div><div class="k">連續正確</div></div>
+    <div class="metric"><div class="v" id="s-today">0</div><div class="k">今日手數</div></div>
+    <div class="metric"><div class="v" id="s-all">0</div><div class="k">累計</div></div>
+  </div>
+  <div class="table" id="d-table">
+    <div class="zone"><span class="label">Dealer</span><div class="row" id="dealer-hand"></div></div>
+    <div class="zone"><span class="label">Player</span><div class="row" id="player-hand"></div>
+      <div class="readout" id="player-total"></div></div>
+  </div>
+  <div class="picker">
+    <div class="prow"><span class="label">莊家明牌</span><div class="pchips" id="pick-dealer"></div></div>
+    <div class="prow"><span class="label">你的牌 · 點一下加入</span><div class="pchips" id="pick-player"></div></div>
+    <div class="prow2">
+      <button class="tg" id="pk-undo">退回一張</button>
+      <button class="tg" id="pk-clear">清空</button>
+      <button class="tg" id="pk-random">隨機出題</button>
+      <button class="tg" id="pk-dbl" aria-pressed="true">可加倍</button>
+    </div>
+  </div>
+  <div class="dock">
+    <div id="verdict-slot"></div>
+    <div class="acts" id="drill-acts">
+      <button class="act" data-a="H"><span class="k">H</span>補牌</button>
+      <button class="act" data-a="S"><span class="k">S</span>停牌</button>
+      <button class="act" data-a="D"><span class="k">D</span>加倍</button>
+      <button class="act" data-a="P"><span class="k">P</span>分牌</button>
+    </div>
+    <button class="next2" id="drill-reveal">直接看最佳打法（不計分）</button>
+    <button class="next hide" id="drill-next">下一題</button>
+  </div>
+  <div class="toggles" id="modes">
+    <button class="tg" data-m="all" aria-pressed="true">全部</button>
+    <button class="tg" data-m="hard" aria-pressed="false">硬牌</button>
+    <button class="tg" data-m="soft" aria-pressed="false">軟牌</button>
+    <button class="tg" data-m="pair" aria-pressed="false">對牌</button>
+    <button class="tg" data-m="weak" aria-pressed="false">錯題重練</button>
+  </div>
+  <h2>檢討清單 <span id="rev-count" style="letter-spacing:0"></span></h2>
+  <ul class="rank" id="review-list"></ul>
+  <button class="next2" id="rev-clear" style="margin-top:10px">清空檢討清單</button>
+  <p class="note">自己輸入牌組可以復盤剛才在賭場遇到的牌：選莊家明牌、點出你手上的牌，按 H/S/D/P 作答（計分），或直接看最佳打法（不計分）。牌超過兩張時「加倍」會自動關閉，因為真桌上補過牌就不能再加倍。<br>
+  按<b>隨機出題</b>切回原本的隨機練習模式，上方分類決定出題範圍。</p>
+</section>
+
+<!-- ══ SIM ══ -->
+<section id="view-sim" class="hide">
+  <div class="metrics five">
+    <div class="metric"><div class="v" id="m-hands">0</div><div class="k">手數</div></div>
+    <div class="metric"><div class="v" id="m-bank">0</div><div class="k">淨額</div></div>
+    <div class="metric"><div class="v" id="m-err">0</div><div class="k">失誤</div></div>
+    <div class="metric"><div class="v" id="m-acc">—</div><div class="k">正確率</div></div>
+    <div class="metric"><div class="v" id="m-sec">—</div><div class="k">平均秒數</div></div>
+  </div>
+  <div class="table" id="s-table">
+    <div class="pausebar"><span class="pt">暫停中 · 計時已停止</span><button type="button" id="pause-resume">繼續</button></div>
+    <div class="zone"><span class="label">Dealer</span><div class="row" id="sim-dealer"></div>
+      <div class="readout" id="sim-dtotal"></div></div>
+    <div class="zone"><span class="label">Player · 每手 1 單位</span><div class="hands" id="sim-hands"></div></div>
+    <div class="gauge"><span class="label">Shoe</span>
+      <div class="bar"><i id="shoe-fill" style="width:100%"></i></div>
+      <span class="pct" id="shoe-pct">100%</span>
+      <span class="sep"></span>
+      <span class="label">Think</span>
+      <span class="pct live" id="think-live">0.0s</span>
+      <span class="sep"></span>
+      <span class="label">Time</span>
+      <span class="pct" id="sess">0:00</span></div>
+  </div>
+  <div class="dock">
+    <div id="sim-slot"></div>
+    <div class="acts" id="sim-acts">
+      <button class="act" data-a="H"><span class="k">H</span>補牌</button>
+      <button class="act" data-a="S"><span class="k">S</span>停牌</button>
+      <button class="act" data-a="D"><span class="k">D</span>加倍</button>
+      <button class="act" data-a="P"><span class="k">P</span>分牌</button>
+    </div>
+    <button class="next hide" id="sim-next">下一手</button>
+  </div>
+  <div class="toggles">
+    <button class="tg" id="sim-pause" aria-pressed="false">暫停</button>
+    <button class="tg" id="sim-reset">重新開始</button>
+    <button class="tg" id="sim-live" aria-pressed="false">即時糾正</button>
+  </div>
+  <p class="note">模擬過程不打斷你，一手結算後列出每個打錯的決定。淨額以「單位」計，一單位＝你的最小注碼。</p>
+</section>
+
+<!-- ══ CHART ══ -->
+<section id="view-chart" class="hide">
+  <div class="seg" id="seg">
+    <button data-t="hard" aria-selected="true">硬牌</button>
+    <button data-t="soft" aria-selected="false">軟牌</button>
+    <button data-t="pair" aria-selected="false">對牌</button>
+  </div>
+  <div id="chart-slot"></div>
+  <div class="legend">
+    <span><i style="background:#C1483C"></i>H 補牌</span>
+    <span><i style="background:#2E8B62"></i>S 停牌</span>
+    <span><i style="background:#C08B2A"></i>D 加倍</span>
+    <span><i style="background:#3D74A8"></i>P 分牌</span>
+    <span><i style="border:1.5px dashed #EDEBE6"></i>你做錯過</span>
+  </div>
+  <h2>失誤排行</h2>
+  <ul class="rank" id="weak-list"></ul>
+  <p class="note">虛線框的格子是你做錯過的，練習與模擬共用同一份記錄。回<b>單手判斷</b>選「錯題重練」只抽這些格子。<br><br>
+  三條不需要查表的鐵則：保險永不購買；一對 8 與一對 A 永遠分牌；一對 10 永不分牌。</p>
+</section>
+
+<!-- ══ LOG ══ -->
+<section id="view-log" class="hide">
+  <div class="metrics">
+    <div class="metric"><div class="v" id="l-streak">0</div><div class="k">連續天數</div></div>
+    <div class="metric"><div class="v" id="l-days">0</div><div class="k">練習天數</div></div>
+    <div class="metric"><div class="v" id="l-best">0</div><div class="k">單日最高</div></div>
+    <div class="metric"><div class="v" id="l-total">0</div><div class="k">總手數</div></div>
+  </div>
+  <div class="goalwrap">
+    <div class="goalhead">
+      <div class="big" id="l-todayq">0<em> / 100 手</em></div>
+      <span class="label" id="l-todayacc">正確率 —</span>
+    </div>
+    <div class="gbar"><i id="l-goalbar" style="width:0%"></i></div>
+  </div>
+  <h2>每日手數 · 近 14 天</h2>
+  <div class="bars" id="l-bars"></div>
+  <div class="bdays" id="l-bdays"></div>
+  <h2>明細</h2>
+  <ul class="log" id="l-log"></ul>
+  <h2>試算表同步</h2>
+  <div class="goalwrap">
+    <div class="goalhead"><span class="label">練習者暱稱</span><span class="label" id="sync-state">—</span></div>
+    <input class="nameinput" id="sync-name" type="text" maxlength="20" placeholder="輸入暱稱，例如：彥彥" autocomplete="off">
+    <p class="note" style="margin-top:10px">每一手的判斷與每日手數會自動寫進共用的 Google 試算表。離線時先存在本機，回到網路自動補傳。</p>
+  </div>
+  <h2>判斷錯誤回顧 <span id="err-count" style="letter-spacing:0"></span></h2>
+  <ul class="errlist" id="err-list"></ul>
+  <button class="next2" id="err-clear" style="margin-top:10px">清空錯誤記錄</button>
+  <p class="note">「手數」指你做過的決定次數，單手判斷與實戰模擬都計入。建議每日 100 手，正確率穩定在 98% 以上再考慮進階內容。</p>
+</section>
+
+<footer>
+  記錄自動保存。<button class="reset" id="reset">清除全部記錄</button><br>
+  基本策略把莊家優勢壓到約 0.43%，目的是把長期損失降到最低，不構成獲利方法。實際下注前先設定單場止損。
+</footer>
+</div>
+
+<script>
+/* ═══ 8 decks · S17 · DAS · no surrender ═══ columns: 2 3 4 5 6 7 8 9 10 A */
+const HARD={4:"HHHHHHHHHH",5:"HHHHHHHHHH",6:"HHHHHHHHHH",7:"HHHHHHHHHH",8:"HHHHHHHHHH",
+ 9:"HDDDDHHHHH",10:"DDDDDDDDHH",11:"DDDDDDDDDH",12:"HHSSSHHHHH",13:"SSSSSHHHHH",
+ 14:"SSSSSHHHHH",15:"SSSSSHHHHH",16:"SSSSSHHHHH",17:"SSSSSSSSSS",18:"SSSSSSSSSS",
+ 19:"SSSSSSSSSS",20:"SSSSSSSSSS",21:"SSSSSSSSSS"};
+const SOFT={12:"HHHHHHHHHH",13:"HHHDDHHHHH",14:"HHHDDHHHHH",15:"HHDDDHHHHH",16:"HHDDDHHHHH",
+ 17:"HDDDDHHHHH",18:"SDDDDSSHHH",19:"SSSSSSSSSS",20:"SSSSSSSSSS",21:"SSSSSSSSSS"};
+const PAIR={11:"PPPPPPPPPP",10:"SSSSSSSSSS",9:"PPPPPSPPSS",8:"PPPPPPPPPP",
+ 7:"PPPPPPHHHH",6:"PPPPPHHHHH",5:"DDDDDDDDHH",4:"HHHPPHHHHH",3:"PPPPPPHHHH",2:"PPPPPPHHHH"};
+const ROWS={hard:[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+ soft:[13,14,15,16,17,18,19,20],pair:[11,10,9,8,7,6,5,4,3,2]};
+const WHY={
+ hard4:"硬 8 以下只能補牌，補後不可能爆，也不足以加倍。",
+ hard5:"硬 8 以下只能補牌，補後不可能爆，也不足以加倍。",
+ hard6:"硬 8 以下只能補牌，補後不可能爆，也不足以加倍。",
+ hard7:"硬 8 以下只能補牌，補後不可能爆，也不足以加倍。",
+ hard8:"硬 8 以下只能補牌，補後不可能爆，也不足以加倍。",
+ hard9:"9 僅在莊家 3–6 時加倍。對 2 優勢不足，對 7 以上風險過高。",
+ hard10:"10 對莊家 2–9 加倍，對 10 或 A 只補牌。",
+ hard11:"11 是最強的加倍點。S17 規則下對 A 改為補牌。",
+ hard12:"12 僅對莊家 4、5、6 停牌。對 2、3 停牌的期望值更差。",
+ hard13:"13–16 屬弱手，只在莊家 2–6（爆牌率高）時停牌，讓莊家自行爆牌。",
+ hard14:"13–16 屬弱手，只在莊家 2–6（爆牌率高）時停牌，讓莊家自行爆牌。",
+ hard15:"15 對莊家 7 以上必須補牌。爆牌有風險，但停牌的損失更大。",
+ hard16:"16 對 10 是全表最不利的一手。無投降時只能補牌，這格失誤率最高。",
+ hard17:"硬 17 以上一律停牌，不論莊家明牌。",
+ hard18:"硬 17 以上一律停牌，不論莊家明牌。",
+ hard19:"硬 17 以上一律停牌，不論莊家明牌。",
+ hard20:"硬 17 以上一律停牌，不論莊家明牌。",hard21:"21 停牌。",
+ soft12:"A,A 無法分牌時視為軟 12，補牌。",
+ soft13:"A,2 至 A,6 一律補牌，僅在莊家最弱時加倍。持 A 補牌不會爆。",
+ soft14:"A,2 至 A,6 一律補牌，僅在莊家最弱時加倍。持 A 補牌不會爆。",
+ soft15:"A,4 與 A,5 對莊家 4–6 加倍，其餘補牌。",
+ soft16:"A,4 與 A,5 對莊家 4–6 加倍，其餘補牌。",
+ soft17:"軟 17 永不停牌。17 點無法取勝，應利用 A 的彈性改善牌型。",
+ soft18:"A,7 是全表失誤率最高的一行：對 2、7、8 停牌，對 3–6 加倍，對 9、10、A 補牌。",
+ soft19:"軟 19、20 一律停牌。",soft20:"軟 19、20 一律停牌。",soft21:"軟 21 停牌。",
+ pair11:"一對 A 永遠分牌。兩手各以一張 A 開局，期望值最高。",
+ pair10:"一對 10 永不分牌。20 點勝率已高，拆分只會降低期望值。",
+ pair9:"一對 9 除莊家 7、10、A 外一律分牌。對 7 時你的 18 已足夠。",
+ pair8:"一對 8 永遠分牌。16 是最差的總點，拆分後兩手都優於原手。",
+ pair7:"一對 7 對莊家 2–7 分牌，8 以上視為硬 14 補牌。",
+ pair6:"一對 6 僅對莊家 2–6 分牌。",
+ pair5:"一對 5 永不分牌，視為硬 10，對 2–9 加倍。",
+ pair4:"一對 4 僅在可 DAS 且莊家為 5 或 6 時分牌。",
+ pair3:"一對 2、3 對莊家 2–7 分牌，其餘補牌。",
+ pair2:"一對 2、3 對莊家 2–7 分牌，其餘補牌。"};
+const ACT={H:"補牌 Hit",S:"停牌 Stand",D:"加倍 Double",P:"分牌 Split"};
+const DK=[2,3,4,5,6,7,8,9,10,11];
+const SUITS=[["♠",0],["♥",1],["♦",1],["♣",0]];
+const RL={11:"A",10:"10",9:"9",8:"8",7:"7",6:"6",5:"5",4:"4",3:"3",2:"2"};
+const STORE="bj-basic-strategy-stats";
+/* ═══ Google 試算表同步（Apps Script Web App · 免費）═══ */
+const SYNC_URL="https://script.google.com/macros/s/AKfycbyfi5U2PDcS7YT39Dl7pigNUaOQ61FrSOi7ps3ppQdpdGGxQJuEqZZssPSAJrs_DKnP/exec";
+const QKEY="bj-sync-queue",NKEY="bj-player";
+let syncing=false,lastSync=0;
+function playerName(){return localStorage.getItem(NKEY)||"";}
+function queueRow(r){
+  if(!SYNC_URL)return;
+  try{
+    const q=JSON.parse(localStorage.getItem(QKEY)||"[]");
+    q.push(r);
+    if(q.length>800)q.splice(0,q.length-800);
+    localStorage.setItem(QKEY,JSON.stringify(q));
+  }catch(e){}
+}
+function qLen(){try{return JSON.parse(localStorage.getItem(QKEY)||"[]").length;}catch(e){return 0;}}
+function syncQueue(force){
+  if(!SYNC_URL||syncing)return;
+  const now=Date.now();
+  if(!force&&now-lastSync<15000)return;      /* 節流：最快 15 秒一次，不拖慢作答 */
+  let q; try{q=JSON.parse(localStorage.getItem(QKEY)||"[]");}catch(e){return;}
+  if(!q.length)return;
+  syncing=true;lastSync=now;
+  const batch=q.slice(0,60);
+  fetch(SYNC_URL,{method:"POST",mode:"no-cors",keepalive:true,
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({player:playerName()||"匿名",rows:batch})})
+  .then(function(){
+    try{
+      const rest=JSON.parse(localStorage.getItem(QKEY)||"[]").slice(batch.length);
+      localStorage.setItem(QKEY,JSON.stringify(rest));
+    }catch(e){}
+    paintSync();
+  })
+  .catch(function(){})
+  .then(function(){syncing=false;});
+}
+function logRow(src,desc,up,chose,right,ok,secs){
+  queueRow([new Date().toISOString(),src,desc,String(up),ACT[chose],ACT[right],ok?"O":"X",
+            (typeof secs==="number"&&secs>0)?Math.round(secs*10)/10:""]);
+}
+function paintSync(){
+  const el=$("sync-state");if(!el)return;
+  if(!SYNC_URL){el.textContent="未設定同步";return;}
+  const n=qLen();
+  el.textContent=n?("待上傳 "+n+" 筆"):"已同步";
+}
+window.addEventListener("pagehide",function(){syncQueue(true);});
+document.addEventListener("visibilitychange",function(){if(document.hidden)syncQueue(true);});
+const GOAL=100;
+let stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
+let mode="all",hand=null,answered=false,chartTab="hard";
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function dayKey(d){
+  const t=d||new Date();
+  return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+}
+function rec(){
+  if(!stats.days)stats.days={};
+  const k=dayKey();
+  if(!stats.days[k])stats.days[k]={q:0,c:0,h:0};
+  return stats.days[k];
+}
+async function load(){
+  try{const r=localStorage.getItem(STORE);if(r)stats=Object.assign(stats,JSON.parse(r));}catch(e){}
+  if(!stats.days)stats.days={};
+  if(!stats.reviews)stats.reviews=[];
+  if(!stats.errors)stats.errors=[];
+  paint();renderLog();
+}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(stats));}catch(e){}
+  syncQueue();}
+function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
+
+function card(v){
+  const s=rnd(SUITS);
+  return {v:v,label:v===11?"A":(v===10?rnd(["10","J","Q","K"]):String(v)),suit:s[0],red:s[1]};
+}
+function cardEl(c,sm,back){
+  const d=document.createElement("div");
+  d.className="card"+(sm?" sm":"")+(back?" back":(c&&c.red?" red":""));
+  if(!back)d.innerHTML='<div class="ci">'+c.label+'<em>'+c.suit+'</em></div><div class="cp">'+c.suit+'</div>';
+  return d;
+}
+function value(cards){
+  let t=0,a=0;
+  cards.forEach(function(c){t+=c.v;if(c.v===11)a++;});
+  while(t>21&&a>0){t-=10;a--;}
+  return {total:t,soft:a>0};
+}
+function label(v,cards){
+  if(v.total>21)return "爆牌 "+v.total;
+  if(cards&&cards.length===2&&v.total===21)return "BLACKJACK";
+  return (v.soft?"軟 ":"硬 ")+v.total;
+}
+function correctFor(cards,dv,canDbl,canSpl){
+  const i=DK.indexOf(dv),v=value(cards);
+  if(canSpl&&cards.length===2&&cards[0].v===cards[1].v){
+    const r=cards[0].v;let a=PAIR[r][i];
+    if(a==="D"&&!canDbl)a="H";
+    return {act:a,why:WHY["pair"+r],key:"pair"+r+"v"+dv};
+  }
+  const src=v.soft?SOFT:HARD,cat=v.soft?"soft":"hard";
+  const row=Math.min(21,Math.max(v.soft?12:4,v.total));
+  let a=src[row][i];
+  if(a==="D"&&!canDbl)a=(cat==="soft"&&row>=18)?"S":"H";
+  return {act:a,why:WHY[cat+row]||"",key:ROWS[cat].indexOf(row)>-1?cat+row+"v"+dv:null};
+}
+function logMiss(k){if(k)stats.byKey[k]=(stats.byKey[k]||0)+1;}
+function logErr(desc,up,chose,right,src,secs,cards,cd,cp){
+  if(!stats.errors)stats.errors=[];
+  stats.errors.unshift({ts:Date.now(),d:desc,u:String(up),c:chose,a:right,s:src,
+    sec:(typeof secs==="number"&&secs>0)?Math.round(secs*10)/10:null,
+    p:cards?cards.map(function(c){return c.v;}):null,
+    uv:typeof up==="number"?up:(up==="A"?11:parseInt(up,10)),
+    cd:!!cd,cp:!!cp});
+  if(stats.errors.length>80)stats.errors.length=80;
+}
+function flash(id){const e=$(id);if(!e)return;e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash");}
+function tally(ok,secs){
+  const r=rec();r.q++;if(ok)r.c++;
+  if(typeof secs==="number"&&secs>0&&secs<300){r.t=(r.t||0)+secs;r.tn=(r.tn||0)+1;}
+}
+
+/* ═══ DRILL / REVIEW ═══ */
+const RANKS=[11,2,3,4,5,6,7,8,9,10];
+let dq={player:[],dcard:null,canDbl:true,mode:"manual"};
+function build(kind){
+  const d=card(rnd(DK));let p;
+  if(kind==="pair"){const r=rnd(Object.keys(PAIR).map(Number));p=[card(r),card(r)];
+    if(r===10)p[1].label=p[0].label==="10"?"J":"10";}
+  else if(kind==="soft"){const x=rnd([2,3,4,5,6,7,8,9]);
+    p=Math.random()<.5?[card(11),card(x)]:[card(x),card(11)];}
+  else{let a,b,g=0;do{a=rnd([2,3,4,5,6,7,8,9,10]);b=rnd([2,3,4,5,6,7,8,9,10]);g++;}
+    while((a===b||a+b>20||a+b<5)&&g<60);p=[card(a),card(b)];}
+  return {dealer:d,player:p};
+}
+function pickWeak(){
+  const ks=Object.keys(stats.byKey).filter(function(k){return stats.byKey[k]>0;});
+  if(!ks.length)return null;
+  const m=rnd(ks).match(/^(hard|soft|pair)(\d+)v(\d+)$/);if(!m)return null;
+  const cat=m[1],row=+m[2],d=card(+m[3]);let p;
+  if(cat==="pair"){p=[card(row),card(row)];if(row===10)p[1].label=p[0].label==="10"?"J":"10";}
+  else if(cat==="soft"){p=[card(11),card(row-11)];}
+  else{let a=Math.min(10,row-2),b=row-a;
+    if(a===b){a=Math.min(10,row-3);b=row-a;}
+    if(a<2||b<2||a===b)return null;p=[card(a),card(b)];}
+  return {dealer:d,player:p};
+}
+function ghost(){const d=document.createElement("div");d.className="card ghost";return d;}
+function dqValid(){return !!dq.dcard&&dq.player.length>=2;}
+function dqPair(){return dq.player.length===2&&dq.player[0].v===dq.player[1].v;}
+function dqDbl(){return dq.player.length===2&&dq.canDbl;}
+function buildPickers(){
+  const dz=$("pick-dealer");dz.replaceChildren();
+  DK.forEach(function(v){
+    const b=document.createElement("button");b.className="pc";b.type="button";
+    b.textContent=v===11?"A":String(v);b.setAttribute("aria-pressed","false");
+    b.onclick=function(){dq.dcard=card(v);dq.mode="manual";clearVerdict();renderPick();};
+    dz.appendChild(b);});
+  const pz=$("pick-player");pz.replaceChildren();
+  RANKS.forEach(function(v){
+    const b=document.createElement("button");b.className="pc";b.type="button";
+    b.textContent=v===11?"A":String(v);
+    b.onclick=function(){
+      if(dq.player.length>=6)return;
+      dq.player.push(card(v));dq.mode="manual";clearVerdict();renderPick();};
+    pz.appendChild(b);});
+}
+function clearVerdict(){
+  answered=false;
+  $("verdict-slot").innerHTML="";
+  $("d-table").classList.remove("win","lose");
+  $("drill-next").classList.add("hide");
+  $("drill-acts").classList.remove("hide");
+  $("drill-reveal").classList.remove("hide");
+  drillStart=Date.now();
+}
+function renderPick(){
+  const dz=$("dealer-hand");dz.replaceChildren();
+  dz.appendChild(dq.dcard?cardEl(dq.dcard):ghost());
+  const pz=$("player-hand");pz.replaceChildren();
+  if(dq.player.length)dq.player.forEach(function(c){pz.appendChild(cardEl(c));});
+  else{pz.appendChild(ghost());pz.appendChild(ghost());}
+  $("pick-dealer").querySelectorAll(".pc").forEach(function(b,i){
+    b.setAttribute("aria-pressed",!!dq.dcard&&dq.dcard.v===DK[i]);});
+  let txt;
+  if(!dqValid())txt="<b>選莊家明牌，再點出你手上至少兩張牌</b>";
+  else txt="<b>"+(dqPair()?"一對 "+RL[dq.player[0].v]:label(value(dq.player),dq.player))+
+    "</b>　對　莊家明牌 <b>"+(dq.dcard.v===11?"A":dq.dcard.v)+"</b>";
+  $("player-total").innerHTML=txt;
+  const pb=$("pk-dbl");
+  pb.disabled=dq.player.length!==2;
+  pb.setAttribute("aria-pressed",dqDbl());
+  pb.textContent=dq.player.length>2?"三張牌以上不可加倍":"可加倍";
+  $("drill-reveal").disabled=!dqValid();
+  $("drill-acts").querySelectorAll(".act").forEach(function(b){
+    b.classList.remove("picked");const a=b.dataset.a;
+    b.disabled=!dqValid()||answered||(a==="D"&&!dqDbl())||(a==="P"&&!dqPair());});
+}
+function randomHand(){
+  let h=null;
+  if(mode==="weak")for(let i=0;i<12&&!h;i++)h=pickWeak();
+  if(!h)h=build(mode==="all"||mode==="weak"?rnd(["hard","hard","soft","pair"]):mode);
+  dq.player=h.player;dq.dcard=h.dealer;dq.canDbl=true;dq.mode="random";
+  clearVerdict();renderPick();
+}
+function deal(){
+  if(dq.mode==="random"){randomHand();return;}
+  dq.player=[];dq.canDbl=true;clearVerdict();renderPick();
+}
+function addReview(desc,up,act,kind){
+  if(!stats.reviews)stats.reviews=[];
+  stats.reviews.unshift({d:desc,u:up,a:act,g:kind});
+  if(stats.reviews.length>30)stats.reviews.length=30;
+  renderReviews();
+}
+function renderReviews(){
+  const rv=stats.reviews||[];
+  $("rev-count").textContent=rv.length?"· "+rv.length+" 筆":"";
+  $("review-list").innerHTML=rv.length?rv.map(function(x){
+    return "<li><span><span class='tag-x "+(x.g==="err"?"err":"qry")+"'>"+
+      (x.g==="err"?"錯":"查")+"</span>"+x.d+" vs "+x.u+"</span><span class='n'>"+ACT[x.a]+"</span></li>";
+  }).join(""):"<li><span>還沒有記錄。作答錯誤或查詢最佳打法都會列在這裡。</span></li>";
+}
+function drillDesc(){
+  return dqPair()?"一對 "+RL[dq.player[0].v]:label(value(dq.player),dq.player);
+}
+function drillAnswer(a,btn){
+  if(answered||!dqValid())return;
+  if(a==="P"&&!dqPair())return;
+  if(a==="D"&&!dqDbl())return;
+  answered=true;
+  const t=correctFor(dq.player,dq.dcard.v,dqDbl(),dqPair()),ok=a===t.act;
+  const up=dq.dcard.v===11?"A":dq.dcard.v;
+  if(btn)btn.classList.add("picked");
+  const dsec=drillStart?(Date.now()-drillStart)/1000:0;
+  stats.total++;tally(ok,dsec);
+  logRow("查表",drillDesc(),up,a,t.act,ok,dsec);
+  if(ok){stats.correct++;stats.streak++;}
+  else{stats.streak=0;logMiss(t.key);buzz(60);addReview(drillDesc(),up,t.act,"err");
+    logErr(drillDesc(),up,a,t.act,"查表",dsec,dq.player,dqDbl(),dqPair());}
+  $("d-table").classList.add(ok?"win":"lose");
+  $("verdict-slot").innerHTML='<div class="panel '+(ok?"ok":"no")+'">'+
+    '<div class="ph"><span class="t">'+(ok?"判斷正確":"判斷錯誤")+'</span>'+
+    '<span class="sub">正解　'+ACT[t.act]+'<br>用時 '+dsec.toFixed(1)+'s</span></div>'+
+    '<div class="pb">'+t.why+'</div></div>';
+  $("drill-acts").classList.add("hide");$("drill-reveal").classList.add("hide");
+  armNext($("drill-next"),dq.mode==="random"?"下一題":"清空重新輸入");
+  paint();flash(ok?"mt-streak":"mt-acc");renderChart();renderLog();save();
+}
+function drillReveal(){
+  if(!dqValid()||answered)return;
+  answered=true;
+  const t=correctFor(dq.player,dq.dcard.v,dqDbl(),dqPair());
+  const up=dq.dcard.v===11?"A":dq.dcard.v;
+  addReview(drillDesc(),up,t.act,"qry");
+  $("verdict-slot").innerHTML='<div class="panel neutral">'+
+    '<div class="ph"><span class="t">最佳打法　'+ACT[t.act]+'</span>'+
+    '<span class="sub">'+drillDesc()+' vs '+up+
+    (dqDbl()?"":"<br>不可加倍")+'</span></div><div class="pb">'+t.why+'</div></div>';
+  $("drill-acts").classList.add("hide");$("drill-reveal").classList.add("hide");
+  armNext($("drill-next"),dq.mode==="random"?"下一題":"清空重新輸入");
+  renderChart();save();
+}
+function paint(){
+  const r=(stats.days&&stats.days[dayKey()])||{q:0,c:0};
+  $("s-acc").textContent=stats.total?Math.round(stats.correct/stats.total*100)+"%":"—";
+  $("s-streak").textContent=stats.streak||0;
+  $("s-today").textContent=r.q||0;
+  $("s-all").textContent=stats.total||0;
+}
+
+/* ═══ SIMULATION ═══ */
+let shoe=[],si=0;
+let sim={hands:[],act:0,dealer:[],phase:"idle",bank:0,played:0,decisions:0,errors:0,
+  misses:[],live:false,shuffled:false,times:[],tSum:0,tCount:0,tStart:0,
+  paused:false,pauseAt:0,sessStart:0,sessPaused:0};
+let thinkTimer=null,lastActAt=0,drillStart=0;
+const SLOW=4;
+function mmss(ms){
+  const t=Math.max(0,Math.floor(ms/1000));
+  return Math.floor(t/60)+":"+String(t%60).padStart(2,"0");
+}
+function startThink(){
+  stopThink();
+  thinkTimer=setInterval(function(){
+    if(sim.paused)return;
+    const el=$("think-live");
+    if(sim.tStart&&sim.phase==="play"){
+      const s=(Date.now()-sim.tStart)/1000;
+      el.textContent=s.toFixed(1)+"s";
+      el.className="pct live"+(s>SLOW?" slow":"");
+    }
+    $("sess").textContent=mmss(sim.sessStart?Date.now()-sim.sessStart-sim.sessPaused:0);
+  },250);
+}
+function stopThink(){if(thinkTimer){clearInterval(thinkTimer);thinkTimer=null;}}
+function armNext(btn,txt){
+  if(txt)btn.textContent=txt;
+  btn.classList.remove("hide");btn.classList.add("arm");
+  setTimeout(function(){btn.classList.remove("arm");},700);
+}
+function newShoe(){
+  shoe=[];const ranks=[2,3,4,5,6,7,8,9,10,10,10,10,11];
+  for(let d=0;d<8;d++)for(let r=0;r<13;r++)for(let s=0;s<4;s++)shoe.push(ranks[r]);
+  for(let i=shoe.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));
+    const t=shoe[i];shoe[i]=shoe[j];shoe[j]=t;}
+  si=0;
+}
+function draw(){if(si>=shoe.length)newShoe();return card(shoe[si++]);}
+function shoeGauge(){
+  const left=shoe.length?Math.max(0,1-si/shoe.length):1;
+  $("shoe-fill").style.width=(left*100).toFixed(0)+"%";
+  $("shoe-pct").textContent=Math.round(left*100)+"%";
+}
+function simStart(){
+  sim.shuffled=false;
+  if(!sim.sessStart)sim.sessStart=Date.now();
+  if(!shoe.length||si>shoe.length*0.72){newShoe();sim.shuffled=true;}
+  sim.dealer=[draw(),draw()];
+  sim.hands=[{cards:[draw(),draw()],bet:1,done:false,dbl:false,split:false,aceSplit:false,res:null}];
+  sim.act=0;sim.phase="play";sim.misses=[];sim.times=[];sim.tStart=0;
+  $("sim-next").classList.add("hide");$("sim-acts").classList.remove("hide");
+  if(value(sim.hands[0].cards).total===21||value(sim.dealer).total===21){
+    sim.hands[0].done=true;simDealer();
+  }else simRender();
+}
+function canD(h){return h.cards.length===2&&!h.aceSplit;}
+function canP(h){return h.cards.length===2&&h.cards[0].v===h.cards[1].v&&sim.hands.length<4&&!h.aceSplit;}
+function simRender(){
+  const open=sim.phase!=="play";
+  const dz=$("sim-dealer");dz.replaceChildren();
+  dz.appendChild(cardEl(sim.dealer[0]));
+  if(open){for(let i=1;i<sim.dealer.length;i++)dz.appendChild(cardEl(sim.dealer[i]));}
+  else dz.appendChild(cardEl(null,false,true));
+  $("sim-dtotal").innerHTML=open?"<b>"+label(value(sim.dealer),sim.dealer)+"</b>"
+    :"明牌 <b>"+(sim.dealer[0].v===11?"A":sim.dealer[0].v)+"</b>";
+  const box=$("sim-hands");box.replaceChildren();
+  sim.hands.forEach(function(h,idx){
+    const w=document.createElement("div");
+    w.className="hbox"+(sim.phase==="play"&&idx===sim.act?" on":"");
+    let tag=sim.hands.length>1?"HAND "+(idx+1):"HAND";
+    if(h.dbl)tag+=" · 2U";
+    w.innerHTML='<span class="label">'+tag+'</span><div class="row" style="min-height:0;gap:6px"></div>';
+    const row=w.querySelector(".row");
+    h.cards.forEach(function(c){row.appendChild(cardEl(c,true));});
+    const t=document.createElement("div");t.className="readout";
+    t.innerHTML="<b>"+label(value(h.cards),h.cards)+"</b>";w.appendChild(t);
+    if(h.res){const r=document.createElement("div");
+      r.className="res "+(h.res.n>0?"up":h.res.n<0?"down":"");r.textContent=h.res.txt;w.appendChild(r);}
+    box.appendChild(w);
+  });
+  const h=sim.hands[sim.act],on=sim.phase==="play"&&h&&!h.done&&!sim.paused;
+  $("sim-acts").querySelectorAll(".act").forEach(function(b){
+    b.classList.remove("picked");const a=b.dataset.a;
+    b.disabled=!on||(a==="D"&&!canD(h))||(a==="P"&&!canP(h));});
+  if(on){sim.tStart=Date.now();$("think-live").textContent="0.0s";
+    $("think-live").className="pct live";startThink();}
+  else{stopThink();}
+  shoeGauge();simPaint();
+}
+function simPaint(){
+  $("m-hands").textContent=sim.played;
+  const b=$("m-bank");
+  b.textContent=(sim.bank>0?"+":"")+sim.bank;
+  b.className="v "+(sim.bank>0?"up":sim.bank<0?"down":"");
+  $("m-err").textContent=sim.errors;
+  $("m-acc").textContent=sim.decisions?Math.round((sim.decisions-sim.errors)/sim.decisions*100)+"%":"—";
+  $("m-sec").textContent=sim.tCount?(sim.tSum/sim.tCount).toFixed(1)+"s":"—";
+}
+function simAct(a,btn){
+  if(sim.phase!=="play"||sim.paused)return;
+  const now=Date.now();
+  if(now-lastActAt<260)return;
+  const h=sim.hands[sim.act];if(!h||h.done)return;
+  if(a==="D"&&!canD(h))return;
+  if(a==="P"&&!canP(h))return;
+  lastActAt=now;
+  const secs=sim.tStart?(now-sim.tStart)/1000:0;
+  stopThink();
+  const t=correctFor(h.cards,sim.dealer[0].v,canD(h),canP(h));
+  const up=sim.dealer[0].v===11?"A":sim.dealer[0].v;
+  sim.decisions++;tally(a===t.act,secs);
+  logRow("模擬",(h.cards.length===2&&h.cards[0].v===h.cards[1].v)?"一對 "+RL[h.cards[0].v]:label(value(h.cards),h.cards),
+         up,a,t.act,a===t.act,secs);
+  sim.times.push({a:a,secs:secs,ok:a===t.act});
+  sim.tSum+=secs;sim.tCount++;
+  if(a!==t.act){
+    sim.errors++;logMiss(t.key);buzz(60);
+    const desc=(h.cards.length===2&&h.cards[0].v===h.cards[1].v)?"一對 "+RL[h.cards[0].v]:label(value(h.cards),h.cards);
+    sim.misses.push({desc:desc,up:up,chose:ACT[a],right:ACT[t.act],why:t.why});
+    logErr(desc,up,a,t.act,"模擬",secs,h.cards,canD(h),canP(h));
+    if(sim.live)$("sim-slot").innerHTML='<div class="panel no"><div class="ph">'+
+      '<span class="t">這一步錯了</span><span class="sub">正解　'+ACT[t.act]+'</span></div>'+
+      '<div class="pb">'+desc+" 對莊家 "+up+"，你選了 "+ACT[a]+"。<br>"+t.why+'</div></div>';
+  }else if(sim.live)$("sim-slot").innerHTML="";
+  if(btn)btn.classList.add("picked");
+  if(a==="H"){h.cards.push(draw());if(value(h.cards).total>=21)h.done=true;}
+  else if(a==="S"){h.done=true;}
+  else if(a==="D"){h.bet=2;h.dbl=true;h.cards.push(draw());h.done=true;}
+  else if(a==="P"){
+    const c2=h.cards.pop(),ace=h.cards[0].v===11;
+    const nh={cards:[c2,draw()],bet:1,done:ace,dbl:false,split:true,aceSplit:ace,res:null};
+    h.cards.push(draw());h.split=true;h.aceSplit=ace;if(ace)h.done=true;
+    sim.hands.splice(sim.act+1,0,nh);
+  }
+  while(sim.act<sim.hands.length&&sim.hands[sim.act].done)sim.act++;
+  if(sim.act>=sim.hands.length)simDealer();else simRender();
+}
+function simDealer(){
+  sim.phase="dealer";
+  const live=sim.hands.some(function(h){return value(h.cards).total<=21;});
+  const dBJ=sim.dealer.length===2&&value(sim.dealer).total===21;
+  if(live&&!dBJ)while(value(sim.dealer).total<17)sim.dealer.push(draw());
+  const dv=value(sim.dealer),dt=dv.total,dBust=dt>21;
+  let net=0;const lines=[];
+  sim.hands.forEach(function(h){
+    const v=value(h.cards),pBJ=h.cards.length===2&&v.total===21&&!h.split;
+    let n=0,txt="";
+    if(pBJ&&dBJ)txt="PUSH · 雙方 BJ";
+    else if(pBJ){n=1.5;txt="BLACKJACK +1.5";}
+    else if(dBJ){n=-h.bet;txt="莊家 BJ −"+h.bet;}
+    else if(v.total>21){n=-h.bet;txt="爆牌 −"+h.bet;}
+    else if(dBust){n=h.bet;txt="莊家爆 +"+h.bet;}
+    else if(v.total>dt){n=h.bet;txt="贏 +"+h.bet;}
+    else if(v.total<dt){n=-h.bet;txt="輸 −"+h.bet;}
+    else txt="和局 PUSH";
+    h.res={n:n,txt:txt};net+=n;lines.push(txt);
+  });
+  sim.bank=Math.round((sim.bank+net)*10)/10;sim.played++;sim.phase="done";
+  rec().h++;
+  const tb=$("s-table");tb.classList.remove("win","lose");
+  if(net>0)tb.classList.add("win");else if(net<0)tb.classList.add("lose");
+  let html='<div class="panel '+(net>0?"ok":net<0?"no":"neutral")+'">'+
+    '<div class="ph"><span class="t">'+(net>0?"+"+net+" 單位":net<0?net+" 單位":"和局")+'</span>'+
+    '<span class="sub">莊家 '+label(dv,sim.dealer)+'<br>'+lines.join(" / ")+'</span></div>';
+  if(sim.times.length){
+    const tl=sim.times.map(function(x){return x.secs.toFixed(1)+"s";}).join(" / ");
+    const slow=sim.times.filter(function(x){return x.secs>SLOW;}).length;
+    html+='<div class="entry" style="border-top:0;color:var(--muted);font-size:14px">'+
+      '<div class="eh" style="color:var(--muted)">思考時間</div>'+tl+
+      (slow?"　·　有 "+slow+" 個決定超過 "+SLOW+" 秒，真桌上會來不及":"")+'</div>';
+  }
+  if(sim.misses.length){
+    html+='<div class="pb" style="padding-bottom:2px">本手有 '+sim.misses.length+' 個決定偏離基本策略。</div>';
+    sim.misses.forEach(function(m){
+      html+='<div class="entry"><div class="eh">應為 '+m.right+'</div>'+m.desc+" 對莊家 "+m.up+
+      "，你選了 "+m.chose+"，正解是 <span class='fix'>"+m.right+"</span>。<br>"+m.why+'</div>';});
+  }else{
+    html+='<div class="entry"><div class="eh ok-h">本手決定全部正確</div>'+
+    (net<0?"這手的損失來自牌運，不是打法。基本策略只保證長期損失最小。":"")+'</div>';
+  }
+  html+='</div>';
+  $("sim-slot").innerHTML=html;
+  stopThink();$("think-live").textContent="—";$("think-live").className="pct live";
+  $("sim-acts").classList.add("hide");
+  armNext($("sim-next"),sim.shuffled?"下一手 · 已重新洗牌":"下一手");
+  simRender();renderChart();renderLog();save();
+}
+
+/* ═══ CHART ═══ */
+function actAt(cat,row,dv){
+  const src=cat==="pair"?PAIR:cat==="soft"?SOFT:HARD;
+  return src[row][DK.indexOf(dv)];
+}
+function renderChart(){
+  if($("view-chart").classList.contains("hide"))return;
+  const src=chartTab==="pair"?PAIR:chartTab==="soft"?SOFT:HARD;
+  const rows=ROWS[chartTab].slice().sort(function(a,b){return b-a;});
+  const lab=chartTab==="pair"?function(r){return RL[r]+","+RL[r];}
+    :chartTab==="soft"?function(r){return "A,"+(r-11);}:function(r){return String(r);};
+  let h="<table><thead><tr><th class='rh'>你 / 莊家</th>"+
+    DK.map(function(d){return "<th>"+(d===11?"A":d)+"</th>";}).join("")+"</tr></thead><tbody>";
+  rows.forEach(function(r){
+    h+="<tr><th class='rh'>"+lab(r)+"</th>";
+    DK.forEach(function(d,i){const a=src[r][i];
+      h+="<td class='"+a+(stats.byKey[chartTab+r+"v"+d]?" miss":"")+"'>"+a+"</td>";});
+    h+="</tr>";});
+  $("chart-slot").innerHTML=h+"</tbody></table>";
+  const list=Object.entries(stats.byKey).filter(function(e){return e[1]>0;})
+    .sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  $("weak-list").innerHTML=list.length?list.map(function(e){
+    const m=e[0].match(/^(hard|soft|pair)(\d+)v(\d+)$/);if(!m)return"";
+    const row=+m[2],dv=m[3]==="11"?"A":m[3];
+    const name=m[1]==="pair"?"一對 "+RL[row]:m[1]==="soft"?"A,"+(row-11):"硬 "+row;
+    return "<li><span>"+name+" vs "+dv+"　→　"+ACT[actAt(m[1],row,+m[3])]+
+      "</span><span class='n'>"+e[1]+" 次</span></li>";}).join("")
+    :"<li><span>目前沒有失誤記錄。</span></li>";
+}
+
+/* ═══ DAILY LOG ═══ */
+function renderLog(){
+  if($("view-log").classList.contains("hide"))return;
+  paintSync();
+  const days=stats.days||{},keys=Object.keys(days).filter(function(k){return days[k].q>0;}).sort();
+  let total=0,best=0;
+  keys.forEach(function(k){total+=days[k].q;if(days[k].q>best)best=days[k].q;});
+  // streak: consecutive days back from today (or yesterday)
+  let streak=0;const d=new Date();
+  if(!days[dayKey(d)]||!days[dayKey(d)].q)d.setDate(d.getDate()-1);
+  while(days[dayKey(d)]&&days[dayKey(d)].q>0){streak++;d.setDate(d.getDate()-1);}
+  $("l-streak").textContent=streak;
+  $("l-days").textContent=keys.length;
+  $("l-best").textContent=best;
+  $("l-total").textContent=total;
+  const t=days[dayKey()]||{q:0,c:0,h:0};
+  $("l-todayq").innerHTML=t.q+"<em> / "+GOAL+" 手</em>";
+  $("l-todayacc").textContent="正確率 "+(t.q?Math.round(t.c/t.q*100)+"%":"—")+
+    (t.tn?"　·　平均 "+(t.t/t.tn).toFixed(1)+"s":"");
+  const pct=Math.min(100,t.q/GOAL*100);
+  const gb=$("l-goalbar");gb.style.width=pct+"%";gb.className=pct>=100?"done":"";
+  // 14-day bars
+  const bars=$("l-bars"),lbl=$("l-bdays");bars.replaceChildren();lbl.replaceChildren();
+  const win=[];
+  for(let i=13;i>=0;i--){const dd=new Date();dd.setDate(dd.getDate()-i);
+    const k=dayKey(dd);win.push({k:k,d:dd,q:(days[k]&&days[k].q)||0});}
+  const max=Math.max(GOAL,...win.map(function(x){return x.q;}));
+  win.forEach(function(x,i){
+    const col=document.createElement("div");
+    col.className="bcol"+(i===13?" now":"");
+    const q=document.createElement("span");q.className="q";q.textContent=x.q||"";
+    const bar=document.createElement("i");bar.style.height=(x.q/max*100)+"%";
+    col.appendChild(q);col.appendChild(bar);bars.appendChild(col);
+    const s=document.createElement("span");s.textContent=x.d.getDate();lbl.appendChild(s);
+  });
+  // detail list
+  const recent=keys.slice(-14).reverse();
+  let li='<li class="head"><span>日期</span><span>手數</span><span>模擬</span><span>正確率</span><span>秒/手</span></li>';
+  li+=recent.length?recent.map(function(k){
+    const r=days[k];
+    return '<li'+(k===dayKey()?' class="now"':'')+'><span>'+k.slice(5)+'</span><span>'+r.q+
+      '</span><span>'+(r.h||0)+'</span><span>'+(r.q?Math.round(r.c/r.q*100)+"%":"—")+
+      '</span><span>'+(r.tn?(r.t/r.tn).toFixed(1):"—")+'</span></li>';
+  }).join(""):'<li><span>還沒有練習記錄。</span></li>';
+  $("l-log").innerHTML=li;
+  renderErrors();
+}
+let errOpen=-1;
+function miniCard(v,i){
+  const su=SUITS[i%4];
+  const lab=v===11?"A":(v===10?"10":String(v));
+  return '<div class="card sm'+(su[1]?" red":"")+'"><div class="ci">'+lab+'<em>'+su[0]+
+    '</em></div><div class="cp">'+su[0]+'</div></div>';
+}
+function errWhy(x){
+  if(!x.p||!x.uv)return "";
+  const cards=x.p.map(function(v){return {v:v};});
+  return correctFor(cards,x.uv,x.cd,x.cp).why||"";
+}
+function renderErrors(){
+  const es=stats.errors||[];
+  $("err-count").textContent=es.length?"· "+es.length+" 筆":"";
+  if(!es.length){
+    $("err-list").innerHTML='<li class="none">還沒有錯誤記錄。查表檢討與實戰模擬中打錯的決定會列在這裡。</li>';
+    return;
+  }
+  let out="",lastDay="";
+  es.forEach(function(x,idx){
+    const dt=new Date(x.ts),dk=dayKey(dt);
+    if(dk!==lastDay){
+      lastDay=dk;
+      out+='<li class="day">'+((dk===dayKey())?"今天 "+dk.slice(5):dk)+'</li>';
+    }
+    const hh=String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");
+    const open=errOpen===idx;
+    out+='<li class="e'+(open?" open":"")+'" data-i="'+idx+'"><span>'+
+      '<span class="src">'+x.s+'</span><span class="hd">'+x.d+" vs "+x.u+'</span><br>'+
+      '<span class="wrong">你選 '+ACT[x.c]+'</span>　→　<span class="right">應為 '+ACT[x.a]+'</span>'+
+      (x.sec?'　<span style="color:var(--muted);font-size:13px">'+x.sec+'s</span>':'')+
+      '</span><span class="tm">'+hh+'<em>'+(open?"▴":"▾")+'</em></span></li>';
+    if(open){
+      out+='<li class="epre"><div class="prow3">';
+      if(x.p&&x.p.length){
+        x.p.forEach(function(v,i){out+=miniCard(v,i);});
+        out+='<span class="vs">VS</span>'+miniCard(x.uv,3);
+      }else out+='<span class="vs">此筆記錄沒有保存牌面</span>';
+      out+='</div>';
+      const w=errWhy(x);
+      if(w)out+='<div class="ewhy">'+w+'</div>';
+      if(!x.cd)out+='<div class="ewhy" style="color:var(--muted);font-size:13.5px">當時不可加倍（牌超過兩張或分牌後限制）。</div>';
+      if(x.p&&x.p.length)out+='<div class="eact"><button class="next2 eload" data-load="'+idx+
+        '" style="margin-top:0">載入到查表檢討</button></div>';
+      out+='</li>';
+    }
+  });
+  $("err-list").innerHTML=out;
+}
+function loadErr(idx){
+  const x=(stats.errors||[])[idx];
+  if(!x||!x.p||!x.p.length)return;
+  dq.player=x.p.map(function(v){return card(v);});
+  dq.dcard=card(x.uv);
+  dq.canDbl=x.p.length===2?x.cd:true;
+  dq.mode="manual";
+  tab("drill");clearVerdict();renderPick();
+}
+
+/* ═══ wiring ═══ */
+
+$("drill-acts").querySelectorAll(".act").forEach(function(b){
+  b.addEventListener("click",function(){drillAnswer(b.dataset.a,b);});});
+$("sim-acts").querySelectorAll(".act").forEach(function(b){
+  b.addEventListener("click",function(){simAct(b.dataset.a,b);});});
+$("drill-next").onclick=deal;
+$("drill-reveal").onclick=drillReveal;
+$("pk-undo").onclick=function(){if(dq.player.length){dq.player.pop();dq.mode="manual";clearVerdict();renderPick();}};
+$("pk-clear").onclick=function(){dq.player=[];dq.dcard=null;dq.canDbl=true;dq.mode="manual";clearVerdict();renderPick();};
+$("pk-random").onclick=randomHand;
+$("pk-dbl").onclick=function(){if(dq.player.length!==2)return;dq.canDbl=!dq.canDbl;clearVerdict();renderPick();};
+$("rev-clear").onclick=function(){stats.reviews=[];renderReviews();save();};
+$("err-clear").onclick=function(){stats.errors=[];errOpen=-1;renderErrors();save();};
+$("err-list").onclick=function(e){
+  const ld=e.target.closest(".eload");
+  if(ld){loadErr(+ld.dataset.load);return;}
+  const row=e.target.closest("li.e");
+  if(!row)return;
+  const i=+row.dataset.i;
+  errOpen=(errOpen===i)?-1:i;
+  renderErrors();
+};
+function togglePause(){
+  sim.paused=!sim.paused;
+  const btn=$("sim-pause");
+  btn.setAttribute("aria-pressed",sim.paused);
+  btn.textContent=sim.paused?"繼續":"暫停";
+  if(sim.paused){
+    sim.pauseAt=Date.now();
+    $("think-live").textContent="暫停";$("think-live").className="pct live slow";
+    $("s-table").classList.add("paused");
+  }else{
+    const d=Date.now()-sim.pauseAt;
+    if(sim.tStart)sim.tStart+=d;
+    sim.sessPaused+=d;
+    $("s-table").classList.remove("paused");
+  }
+  simRender();
+}
+$("sim-pause").onclick=togglePause;
+$("pause-resume").onclick=togglePause;
+$("sim-next").onclick=function(){$("sim-slot").innerHTML="";simStart();};
+$("modes").onclick=function(e){
+  const b=e.target.closest(".tg");if(!b)return;mode=b.dataset.m;
+  $("modes").querySelectorAll(".tg").forEach(function(c){c.setAttribute("aria-pressed",c===b);});
+  randomHand();};
+$("sim-live").onclick=function(){sim.live=!sim.live;this.setAttribute("aria-pressed",sim.live);};
+$("sim-reset").onclick=function(){
+  sim.bank=0;sim.played=0;sim.decisions=0;sim.errors=0;sim.tSum=0;sim.tCount=0;
+  sim.paused=false;sim.sessStart=Date.now();sim.sessPaused=0;
+  $("sim-pause").setAttribute("aria-pressed","false");$("sim-pause").textContent="暫停";
+  $("s-table").classList.remove("paused");
+  newShoe();$("sim-slot").innerHTML="";simStart();};
+$("seg").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;chartTab=b.dataset.t;
+  $("seg").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
+  renderChart();};
+function tab(w){
+  ["drill","sim","chart","log"].forEach(function(k){
+    $("tab-"+k).setAttribute("aria-selected",k===w);
+    $("view-"+k).classList.toggle("hide",k!==w);});
+  if(w==="chart")renderChart();
+  if(w==="log")renderLog();
+  if(w==="sim"){if(sim.phase==="idle")simStart();startThink();}else stopThink();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+["drill","sim","chart","log"].forEach(function(k){$("tab-"+k).onclick=function(){tab(k);};});
+$("reset").onclick=function(){
+  stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
+  paint();renderChart();renderLog();renderReviews();save();};
+document.addEventListener("keydown",function(e){
+  const k=e.key.toUpperCase(),inSim=!$("view-sim").classList.contains("hide");
+  if(["H","S","D","P"].indexOf(k)>-1){
+    const b=$(inSim?"sim-acts":"drill-acts").querySelector('.act[data-a="'+k+'"]');
+    if(b&&!b.disabled){b.classList.add("picked");inSim?simAct(k,b):drillAnswer(k,b);}
+  }else if(e.code==="Space"){
+    if(inSim&&sim.phase==="done"){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
+    else if(!inSim&&answered){e.preventDefault();deal();}
+  }});
+(function(){
+  const ni=$("sync-name");
+  ni.value=playerName();
+  ni.onchange=function(){localStorage.setItem(NKEY,ni.value.trim());paintSync();};
+})();
+setInterval(function(){syncQueue();},20000);
+load().then(function(){buildPickers();renderReviews();renderChart();renderPick();paintSync();});
+</script>
+</body>
+</html>
