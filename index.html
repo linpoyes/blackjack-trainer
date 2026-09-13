@@ -262,6 +262,9 @@ h2{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:up
 .seg button{flex:1;background:transparent;border:1px solid var(--hair-2);border-radius:2px;padding:11px 2px;
   font-family:inherit;font-size:15px;cursor:pointer;color:var(--muted);transition:all .16s}
 .seg button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+/* 設定裡塞在一列右側的小型切換 */
+.seg.mini{display:inline-flex;gap:6px;margin:0;flex:0 0 auto}
+.seg.mini button{flex:0 0 auto;padding:7px 13px;font-size:14px;font-family:var(--mono)}
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-variant-numeric:tabular-nums}
 th,td{text-align:center;font-size:16px;height:40px;padding:0;font-weight:500}
 thead th{font-size:13px;color:var(--muted);height:30px;font-weight:400;border-bottom:1px solid var(--hair-2)}
@@ -492,16 +495,16 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <!-- 桌規每個分頁都在最上面，攤開來會吃掉半個螢幕；收成一行，要核對再點開 -->
   <details class="rules">
     <summary>
-      <span class="rsum">8 副 · S17 · BJ 3:2 · DAS · 不可投降</span>
-      <span class="redge">莊優 0.43%</span>
+      <span class="rsum" id="rs-sum">8 副 · S17 · BJ 3:2 · DAS · 不可投降</span>
+      <span class="redge" id="rs-edge">莊優 0.43%</span>
     </summary>
     <div class="ruleset">
-      <div class="rl"><span>牌盒</span><span>8 副</span></div>
+      <div class="rl"><span>牌盒</span><span id="rl-decks">8 副</span></div>
       <div class="rl"><span>莊家軟 17</span><span>停牌 S17</span></div>
       <div class="rl"><span>Blackjack</span><span>3 : 2</span></div>
       <div class="rl"><span>分牌後加倍</span><span>可 DAS</span></div>
       <div class="rl"><span>投降</span><span>不可</span></div>
-      <div class="rl"><span>理論莊家優勢</span><span>≈ 0.43%</span></div>
+      <div class="rl"><span>理論莊家優勢</span><span id="rl-edge">≈ 0.43%</span></div>
     </div>
     <p class="hint">上桌前核對桌面規則。若標示 Dealer hits soft 17 或 Blackjack pays 6:5，策略表與優勢都會改變。</p>
   </details>
@@ -668,7 +671,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <details class="fold">
     <summary>真數怎麼算</summary>
     <div class="formula">真數 ＝ <em>流水數</em> ÷ <em>剩餘副數</em><br>
-      <span class="sm">例：流水數 ＋9，八副牌打掉 5 副 → 9 ÷ 3 ＝ 真數 ＋3</span></div>
+      <span class="sm">例：流水數 ＋9，牌盒打掉 5 副、還剩 3 副 → 9 ÷ 3 ＝ 真數 ＋3</span></div>
     <p class="note">流水數 ＋9 在只剩一副時很誇張，在還剩八副時幾乎沒意義。<b>要下多少注看的是真數，不是流水數。</b><br><br>
     剩餘副數用看的估：牌盒裡的棄牌堆大約幾副，剩下的就是幾副，抓到半副精度就夠了。</p>
   </details>
@@ -700,8 +703,9 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
       <p class="note">21點不是單純的輸贏兩種結果（有平手、加倍、分牌、Blackjack 賠 1.5），所以實務上用等價的形式：</p>
       <div class="formula">f<em>*</em> ≈ <em>優勢</em> ÷ <em>變異數</em>　≈　優勢 ÷ 1.32<br>
         <span class="sm">21點每一單位下注的變異數約 1.32</span></div>
-      <p class="note">優勢從真數來。八副 S17、Blackjack 3:2、可 DAS 的桌子，真數 ＋1 左右才打平，之後真數每多 ＋1，優勢大約多 0.5%：</p>
-      <div class="formula">優勢% ≈ ( <em>真數</em> − 1 ) × 0.5</div>
+      <p class="note" id="k-basenote">優勢從真數來。真數每多 ＋1，優勢大約多 0.5%；扣掉這張桌子本來就有的基礎劣勢，就是你現在的優勢：</p>
+      <div class="formula" id="k-formula">優勢% ≈ <em>真數</em> × 0.5 − <em>0.43</em><br>
+        <span class="sm">後面那個數字＝這張桌子的理論莊家優勢，副數越少越小</span></div>
     </details>
   </details>
 </section>
@@ -755,6 +759,20 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 
 <!-- ══ SETTINGS ══ -->
 <section id="view-set" class="hide">
+  <h2>桌規</h2>
+  <div class="setblk">
+    <div class="r"><span>牌盒副數</span>
+      <div class="seg mini" id="deck-seg">
+        <button type="button" data-d="4" aria-selected="false">4 副</button>
+        <button type="button" data-d="6" aria-selected="false">6 副</button>
+        <button type="button" data-d="8" aria-selected="true">8 副</button>
+      </div></div>
+    <div class="r"><span>理論莊家優勢</span><span id="set-edge">≈ 0.43%</span></div>
+  </div>
+  <p class="note">4、6、8 副的基本策略表完全一樣，所以<b>策略表不會變</b>。會跟著變的是：實戰模擬的牌盒大小、真數練習的牌盒、以及凱利換算用的基礎劣勢。<br><br>
+  單副與雙副是另外兩張策略表（很多格不一樣），澳門低限桌不會出現，這裡不做。<br><br>
+  桌面若標示 Dealer hits soft 17，策略表也會不同，這裡一律當 S17。</p>
+
   <h2>帳號</h2>
   <div class="setblk">
     <div class="r"><span>目前登入</span><span id="st-name">—</span></div>
@@ -909,6 +927,39 @@ function paintSync(){
 }
 window.addEventListener("pagehide",function(){syncQueue(true);});
 document.addEventListener("visibilitychange",function(){if(document.hidden)syncQueue(true);});
+/* ═══ 桌規：牌盒副數 ═══
+   4 / 6 / 8 副的基本策略表完全一樣（標準策略表才會標「4-8 decks」），
+   所以副數只影響牌盒大小、真數練習的牌盒、與凱利換算用的基礎劣勢，策略表一格都不用改。
+   單副與雙副是另外兩張表，澳門低限桌不會出現，這裡不做。 */
+const DBASE={4:0.35,6:0.40,8:0.43};   /* S17 · BJ 3:2 · 可 DAS · 不可投降 的理論莊家優勢 % */
+const DKEY="bj-decks";
+let tblDecks=8;
+function edgeAt(tc){return tc*0.5-DBASE[tblDecks];}
+function loadDecks(){
+  const v=parseInt(localStorage.getItem(DKEY),10);
+  tblDecks=DBASE[v]?v:8;
+}
+function applyDecks(){
+  const b=DBASE[tblDecks].toFixed(2);
+  $("rs-sum").textContent=tblDecks+" 副 · S17 · BJ 3:2 · DAS · 不可投降";
+  $("rs-edge").textContent="莊優 "+b+"%";
+  $("rl-decks").textContent=tblDecks+" 副";
+  $("rl-edge").textContent="≈ "+b+"%";
+  $("set-edge").textContent="≈ "+b+"%";
+  $("k-formula").innerHTML='優勢% ≈ <em>真數</em> × 0.5 − <em>'+b+'</em><br>'+
+    '<span class="sm">後面那個數字＝這張桌子的理論莊家優勢，副數越少越小</span>';
+  $("deck-seg").querySelectorAll("button").forEach(function(x){
+    x.setAttribute("aria-selected",parseInt(x.dataset.d,10)===tblDecks);});
+  /* 換牌盒等於換桌：模擬中的那一手作廢，真數的題目也要用新副數重出 */
+  newShoe();
+  sim.dealer=[];sim.hands=[];sim.phase="idle";sim.paused=false;
+  $("s-table").classList.remove("paused");
+  $("sim-pause").setAttribute("aria-pressed","false");$("sim-pause").textContent="暫停";
+  if(!$("view-sim").classList.contains("hide"))simIdle();
+  if(!$("view-count").classList.contains("hide")&&cmode==="true")cNext();
+  kPaint();
+}
+
 const GOAL=100;
 let stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
 let mode="all",hand=null,answered=false,chartTab="hard";
@@ -1166,7 +1217,7 @@ function armNext(btn,txt){
 }
 function newShoe(){
   shoe=[];const ranks=[2,3,4,5,6,7,8,9,10,10,10,10,11];
-  for(let d=0;d<8;d++)for(let r=0;r<13;r++)for(let s=0;s<4;s++)shoe.push(ranks[r]);
+  for(let d=0;d<tblDecks;d++)for(let r=0;r<13;r++)for(let s=0;s<4;s++)shoe.push(ranks[r]);
   for(let i=shoe.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));
     const t=shoe[i];shoe[i]=shoe[j];shoe[j]=t;}
   si=0;
@@ -1694,10 +1745,11 @@ function cNewFlow(){
   })();
 }
 function cNewTrue(){
-  let decks,dealt,rem,rc,tc,g=0;
+  const decks=tblDecks,steps=[];
+  for(let x=1;x<=decks-0.5;x+=0.5)steps.push(x);   /* 已發副數以半副為單位，最多留半副 */
+  let dealt,rem,rc,tc,g=0;
   do{
-    decks=rnd([6,6,8,8,2]);
-    dealt=rnd([1,1.5,2,2.5,3,3.5,4,4.5,5,5.5]);
+    dealt=rnd(steps);
     rem=decks-dealt;
     rc=Math.round((Math.random()*2-1)*15);
     tc=rem>0?rc/rem:0;g++;
@@ -1860,10 +1912,11 @@ function money(n){return "$"+Math.round(n).toLocaleString("en-US");}
 function numOf(el){return Math.max(0,parseFloat(String(el.value).replace(/[^\d.]/g,""))||0);}
 function kPaint(){
   const bank=numOf($("k-bank")),min=Math.max(1,numOf($("k-min")));
-  const edge=(kTC-1)*0.5;                       /* 八副 S17 DAS：真數 +1 附近打平，之後每 +1 約多 0.5% */
+  const edge=edgeAt(kTC);
   $("k-tc").textContent=sgn(kTC);
   const ev=$("k-edge");
-  ev.textContent=(edge>0?"+":(edge<0?"−":""))+Math.abs(edge).toFixed(1)+"%";
+  /* 優勢慣例就是看到小數點第二位（0.43%、1.65%），一位數會把 1.65 顯示成 1.6 */
+  ev.textContent=(edge>0?"+":(edge<0?"−":""))+Math.abs(edge).toFixed(2)+"%";
   ev.className="v"+(edge>0?" go":(edge<0?" neg":""));
   const full=bank*(edge/100)/BJ_VAR, half=full/2;
   if(edge<=0||half<min){
@@ -1984,6 +2037,12 @@ $("ad-create").onclick=function(){
       $("ad-name").value="";$("ad-pin").value="";
       admLoaded=false;admLoad();});};
 $("ad-refresh").onclick=function(){admLoaded=false;admLoad();};
+$("deck-seg").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;
+  tblDecks=parseInt(b.dataset.d,10);
+  try{localStorage.setItem(DKEY,String(tblDecks));}catch(err){}
+  applyDecks();
+};
 
 /* ═══ 登入 ═══ */
 function applyCount(cd){
@@ -2069,10 +2128,10 @@ $("switch").onclick=function(){
 if(playerName()&&playerPin())$("gate").classList.add("hide");
 
 setInterval(function(){syncQueue();},20000);
-cload();
+cload();loadDecks();
 load().then(function(){
   buildPickers();renderReviews();renderChart();renderPick();
-  cPaint();kPaint();paintSet();
+  cPaint();applyDecks();paintSet();      /* applyDecks 內含 kPaint */
 });
 </script>
 </body>
