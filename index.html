@@ -380,8 +380,11 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .setblk .r:last-child{border-bottom:0}
 .setblk .r span:first-child{color:var(--muted)}
 .setblk .r span:last-child{font-family:var(--mono)}
-.badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:2px 7px;
+/* 中文不能套等寬字型＋字距再縮到 10px，會糊成一團色塊；改回一般字型並放大 */
+.badge{font-family:var(--sans);font-size:12.5px;letter-spacing:0;padding:3px 9px;
   border-radius:2px;background:var(--brass);color:#16191B;font-weight:600;vertical-align:1px}
+/* 身分這一列是整段的重點，不要塞小徽章，直接用一般大小的字 */
+.role{font-family:var(--sans)!important;color:var(--brass);font-weight:600}
 .ulist{list-style:none;padding:0;margin:10px 0 0}
 .ulist li{padding:12px 0;border-bottom:1px solid var(--hair);display:grid;
   grid-template-columns:1fr auto;gap:5px 12px;font-size:15px;cursor:pointer}
@@ -1742,7 +1745,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function paintSet(){
   $("st-name").textContent=playerName()||"—";
-  $("st-role").innerHTML=isAdmin()?'<span class="badge">系統人員</span>':"一般使用者";
+  $("st-role").innerHTML=isAdmin()?'<span class="role">系統人員</span>':'<span class="role" style="color:var(--muted);font-weight:400">一般使用者</span>';
   paintSync();
   $("adm").classList.toggle("hide",!isAdmin());
   if(isAdmin()&&playerName()&&!admLoaded)admLoad();
