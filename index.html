@@ -322,6 +322,18 @@ td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(2
 .log li.head{color:var(--text);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;border-color:var(--hair-2)}
 .log li span:not(:first-child){text-align:right;min-width:40px}
 .log li.now{color:var(--text)}
+/* 加到主畫面的提示：只出現一次、關掉就不再煩人 */
+.a2hs{display:flex;align-items:center;gap:12px;
+  padding:calc(11px + env(safe-area-inset-top)) 16px 11px;
+  background:rgba(198,163,75,.13);border-bottom:1px solid rgba(198,163,75,.3);
+  font-size:14px;line-height:1.5;color:var(--text)}
+.a2hs.hide{display:none}
+.a2hs span{flex:1}
+.a2hs button{flex:0 0 auto;border:1px solid var(--hair-2);background:transparent;
+  color:var(--muted);border-radius:3px;padding:6px 12px;font-family:inherit;
+  font-size:13px;cursor:pointer}
+.a2hs button:active{background:var(--surface-2);color:var(--text)}
+.a2hs:not(.hide)~.wrap header{padding-top:18px}
 .hide{display:none}
 .gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;
   justify-content:center;padding:24px calc(24px + env(safe-area-inset-left))}
@@ -485,6 +497,10 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
     <p class="gmsg" id="g-msg"></p>
     <p class="ghint" id="g-hint">換手機、換瀏覽器打同一組帳號密碼，就會看到同一份記錄。</p>
   </div>
+</div>
+<div class="a2hs hide" id="a2hs">
+  <span id="a2hs-t"></span>
+  <button type="button" id="a2hs-x">關閉</button>
 </div>
 <div class="wrap">
 <header>
@@ -2096,6 +2112,8 @@ function gateGo(){
         :(d&&d.error==="no_user")?"沒有這個帳號，第一次來請按「註冊」"
         :(d&&d.error==="bad_pin")?"密碼不對"
         :(d&&d.error==="bad_input")?"暱稱或密碼格式不對"
+        /* 離線時講清楚是網路問題，不要讓人以為帳號壞了 */
+        :(navigator.onLine===false)?"現在沒有網路。登入過一次之後就能離線練習。"
         :"連不上伺服器，請檢查網路後再試";
       return;
     }
@@ -2126,6 +2144,31 @@ $("switch").onclick=function(){
   window.scrollTo({top:0,behavior:"instant"});
 };
 if(playerName()&&playerPin())$("gate").classList.add("hide");
+
+/* ═══ 離線與加到主畫面 ═══ */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+(function(){
+  const ua=navigator.userAgent;
+  const ios=/iPhone|iPad|iPod/.test(ua);
+  const standalone=window.navigator.standalone===true||
+    (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);
+  /* LINE、Chrome 這些內建瀏覽器沒有「加入主畫面」，要先請他改用 Safari 打開 */
+  const embedded=/CriOS|FxiOS|EdgiOS|Line\/|FBAN|FBAV|Instagram/.test(ua);
+  const until=parseInt(localStorage.getItem("bj-a2hs")||"0",10);
+  if(!ios||standalone||Date.now()<until)return;
+  $("a2hs-t").textContent=embedded
+    ? "用 Safari 開啟，就能加到主畫面、沒訊號也能練"
+    : "分享 → 加入主畫面，沒訊號也能練";
+  $("a2hs").classList.remove("hide");
+  $("a2hs-x").onclick=function(){
+    $("a2hs").classList.add("hide");
+    try{localStorage.setItem("bj-a2hs",String(Date.now()+30*864e5));}catch(e){}
+  };
+})();
 
 setInterval(function(){syncQueue();},20000);
 cload();loadDecks();
