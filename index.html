@@ -1865,7 +1865,7 @@ function gateGo(){
   msg.className="gmsg";
   if(!nm){msg.textContent="請輸入暱稱";return;}
   if(!/^\d{4}$/.test(pin)){msg.textContent="密碼要剛好四位數字";return;}
-  btn.disabled=true;msg.textContent="連線中…";
+  btn.disabled=true;msg.textContent="登入中…";
   jsonp({action:"login",name:nm,pin:pin},function(d){
     btn.disabled=false;
     if(!d||!d.ok){
