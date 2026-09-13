@@ -83,6 +83,7 @@ nav button[aria-selected="true"]::after{transform:scaleX(1)}
 .metric .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--muted);margin-top:4px;line-height:1.3}
 .metric.flash .v{color:var(--brass)}
+.metrics.three{grid-template-columns:repeat(3,1fr)}
 .metrics.five{grid-template-columns:repeat(5,1fr)}
 .metrics.five .metric{padding:10px 2px 9px}
 .metrics.five .metric .v{font-size:19px}
@@ -269,6 +270,22 @@ td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(2
 .gbar{height:7px;background:rgba(237,235,230,.14);border-radius:4px;overflow:hidden}
 .gbar i{display:block;height:100%;background:var(--brass);transition:width .5s}
 .gbar i.done{background:var(--stand)}
+.goalsub{margin-top:9px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+
+/* 說明一律收起來：練習區才是主角，要看規則再點開 */
+.fold{border-bottom:1px solid var(--hair-2)}
+.fold>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;
+  align-items:center;padding:16px 0 14px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;-webkit-user-select:none;user-select:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:"＋";font-size:15px;letter-spacing:0;color:var(--muted)}
+.fold[open]>summary{color:var(--text)}
+.fold[open]>summary::after{content:"−"}
+.fold>*:last-child{margin-bottom:18px}
+.fold .note:first-of-type{margin-top:2px}
+.fold.sub{border-bottom:0;border-top:1px solid var(--hair);margin-top:4px}
+.fold.sub>summary{padding:13px 0 11px;font-size:11.5px}
 .bars{display:flex;align-items:flex-end;gap:4px;height:132px;margin-top:6px;
   padding-top:8px;border-bottom:1px solid var(--hair-2)}
 .bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
@@ -312,7 +329,9 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 
 /* ── 算牌 ── */
 .cstage{display:flex;gap:8px;justify-content:center;align-items:center;
-  min-height:118px;flex-wrap:wrap;padding:8px 0}
+  min-height:104px;flex-wrap:wrap;padding:2px 0}
+/* 算牌的牌桌只放一到四張牌，不需要實戰模擬那種留白 */
+#c-table .zone{padding:10px 12px 11px}
 .cstage .card{animation:pop .12s ease-out both}
 @keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 .cstage .big-num{font-family:var(--mono);font-size:46px;font-weight:600;color:var(--brass);line-height:1}
@@ -326,28 +345,28 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   padding:10px;text-align:center;font-family:var(--mono);font-size:25px;font-weight:600;
   margin-bottom:7px;min-height:48px;letter-spacing:.04em;line-height:1.1}
 .cdisp.ph{color:var(--muted);font-size:15px;font-weight:400;letter-spacing:.14em}
-.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.kpad button{border:1px solid var(--hair-2);background:var(--surface-2);color:var(--text);
-  border-radius:3px;padding:12px 0;font-family:var(--mono);font-size:20px;font-weight:500;
+/* 四欄：數字佔左三欄，功能鍵沿右邊直排，送出佔右下兩格。
+   比「三欄＋底下再一列送出」整整矮一列。 */
+.kpad4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.kpad4 button{border:1px solid var(--hair-2);background:var(--surface-2);color:var(--text);
+  border-radius:3px;padding:13px 0;font-family:var(--mono);font-size:20px;font-weight:500;
   cursor:pointer;transition:background .14s,transform .08s}
-/* 鍵盤很佔高度，作答區整組壓矮一點，題目跟鍵盤才能同時在一個畫面裡 */
-#c-input .next{padding:14px}
+.kpad4 button:active{transform:translateY(1px);background:#121618}
+.kpad4 button.fn{font-size:14.5px;color:var(--muted);background:transparent;font-family:var(--sans)}
+.kpad4 button.fn:active{background:var(--surface-2);color:var(--text)}
+.kpad4 button.wide{grid-column:2/4}          /* 0 佔兩格，最常按的鍵給大一點 */
+.kpad4 button.go{grid-column:4;grid-row:3/5;
+  border-color:var(--brass);background:rgba(198,163,75,.09);color:var(--brass);
+  font-family:var(--sans);font-size:16px;font-weight:500}
+.kpad4 button.go:active{background:rgba(198,163,75,.2)}
 .cstage.compact{min-height:0;padding:2px 0}
 .tg:disabled{opacity:.3;cursor:default}
 .tg:disabled:hover{background:transparent;color:inherit}
 .tggrp{display:inline-flex;align-items:center;gap:5px;flex-wrap:nowrap}
 .tglab{font-family:var(--sans);font-size:12px;color:var(--muted);white-space:nowrap;margin-right:1px}
-.krow2{display:flex;gap:7px;margin-top:8px}
-.krow2 .next{flex:1}
-.krow2 .ksub{flex:0 0 34%;border:1px dashed var(--hair-2);border-radius:3px;background:transparent;
-  color:var(--muted);font-family:inherit;font-size:15px;cursor:pointer;padding:14px 0;
-  transition:background .14s,color .14s}
-.krow2 .ksub:active{background:var(--surface-2);color:var(--text)}
 .tg.lg{padding:11px 24px;font-size:15px;border-color:var(--brass);color:var(--brass)}
 .tg.lg[aria-pressed="true"]{background:var(--brass);color:#16191B;border-color:var(--brass)}
 .gseg{margin:0 0 24px}
-.kpad button:active{transform:translateY(1px);background:#121618}
-.kpad button.fn{font-size:15px;color:var(--muted);background:transparent;font-family:inherit}
 .acts.three{grid-template-columns:repeat(3,1fr)}
 .acts.three .act{font-family:var(--mono);font-size:22px;font-weight:600;padding:20px 4px}
 .hilo{width:100%;border-collapse:collapse;margin-top:10px}
@@ -565,12 +584,10 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 
 <!-- ══ COUNT ══ -->
 <section id="view-count" class="hide">
-  <div class="metrics five">
+  <div class="metrics three">
     <div class="metric"><div class="v" id="c-q">0</div><div class="k">今日題數</div></div>
-    <div class="metric" id="mt-cacc"><div class="v" id="c-acc">—</div><div class="k">今日正確率</div></div>
-    <div class="metric" id="mt-cstreak"><div class="v" id="c-streak">0</div><div class="k">連續正確</div></div>
-    <div class="metric"><div class="v" id="c-best">0</div><div class="k">最佳連續</div></div>
-    <div class="metric"><div class="v" id="c-sec">—</div><div class="k">平均秒數</div></div>
+    <div class="metric"><div class="v" id="c-acc">—</div><div class="k">今日正確率</div></div>
+    <div class="metric"><div class="v" id="c-streak">0</div><div class="k">連續正確</div></div>
   </div>
 
   <div class="seg" id="cseg">
@@ -608,52 +625,59 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
       <span class="label" id="c-todayacc">正確率 —</span>
     </div>
     <div class="gbar"><i id="c-goalbar" style="width:0%"></i></div>
+    <div class="goalsub" id="c-gsub">最佳連續 0　·　平均 —</div>
   </div>
 
-  <h2>Hi-Lo 牌值</h2>
-  <table class="hilo">
-    <tr class="p"><td class="v">2 3 4 5 6</td><td class="c">＋1 　小牌出掉了</td></tr>
-    <tr class="z"><td class="v">7 8 9</td><td class="c">　0 　不動</td></tr>
-    <tr class="m"><td class="v">10 J Q K A</td><td class="c">－1 　大牌出掉了</td></tr>
-  </table>
-  <p class="note">一副牌 20 張小牌、20 張大牌，整副數完剛好回到 0，所以叫平衡計數。<br><br>
-  <b>流水數越高＝剩下的大牌越多＝對你越有利</b>：容易拿到 Blackjack（賠 1.5 倍）、加倍容易成功、莊家 12–16 容易爆。反過來流水數是負的就是對莊家有利。</p>
+  <details class="fold">
+    <summary>Hi-Lo 牌值</summary>
+    <table class="hilo">
+      <tr class="p"><td class="v">2 3 4 5 6</td><td class="c">＋1 　小牌出掉了</td></tr>
+      <tr class="z"><td class="v">7 8 9</td><td class="c">　0 　不動</td></tr>
+      <tr class="m"><td class="v">10 J Q K A</td><td class="c">－1 　大牌出掉了</td></tr>
+    </table>
+    <p class="note">一副牌 20 張小牌、20 張大牌，整副數完剛好回到 0，所以叫平衡計數。<br><br>
+    <b>流水數越高＝剩下的大牌越多＝對你越有利</b>：容易拿到 Blackjack（賠 1.5 倍）、加倍容易成功、莊家 12–16 容易爆。反過來流水數是負的就是對莊家有利。</p>
+  </details>
 
-  <h2>真數</h2>
-  <div class="formula">真數 ＝ <em>流水數</em> ÷ <em>剩餘副數</em><br>
-    <span class="sm">例：流水數 ＋9，八副牌打掉 5 副 → 9 ÷ 3 ＝ 真數 ＋3</span></div>
-  <p class="note">流水數 ＋9 在只剩一副時很誇張，在還剩八副時幾乎沒意義。<b>要下多少注看的是真數，不是流水數。</b><br><br>
-  剩餘副數用看的估：牌盒裡的棄牌堆大約幾副，剩下的就是幾副，抓到半副精度就夠了。</p>
+  <details class="fold">
+    <summary>真數怎麼算</summary>
+    <div class="formula">真數 ＝ <em>流水數</em> ÷ <em>剩餘副數</em><br>
+      <span class="sm">例：流水數 ＋9，八副牌打掉 5 副 → 9 ÷ 3 ＝ 真數 ＋3</span></div>
+    <p class="note">流水數 ＋9 在只剩一副時很誇張，在還剩八副時幾乎沒意義。<b>要下多少注看的是真數，不是流水數。</b><br><br>
+    剩餘副數用看的估：牌盒裡的棄牌堆大約幾副，剩下的就是幾副，抓到半副精度就夠了。</p>
+  </details>
 
-  <h2>凱利公式</h2>
-  <p class="note">算牌告訴你「現在有沒有優勢」，凱利公式回答下一個問題——<b>有優勢的時候，該押身上多少錢？</b><br><br>
-  押太小，贏的速度慢到沒有意義；押太大，就算每一把期望值都是正的，也會在某一段連輸裡把本金輸光。凱利是讓長期資金成長率最大的那個下注比例，多押少押都比它差。</p>
-  <div class="formula">f<em>*</em> ＝ ( b·p − q ) ÷ b<br>
-    <span class="sm">b 賠率　p 勝率　q 敗率（＝1−p）　f* 該押本金的幾成</span></div>
-  <p class="note">21點不是單純的輸贏兩種結果（有平手、加倍、分牌、Blackjack 賠 1.5），所以實務上用等價的形式：</p>
-  <div class="formula">f<em>*</em> ≈ <em>優勢</em> ÷ <em>變異數</em>　≈　優勢 ÷ 1.32<br>
-    <span class="sm">21點每一單位下注的變異數約 1.32</span></div>
-  <p class="note">優勢從真數來。八副 S17、Blackjack 3:2、可 DAS 的桌子，真數 ＋1 左右才打平，之後真數每多 ＋1，優勢大約多 0.5%：</p>
-  <div class="formula">優勢% ≈ ( <em>真數</em> − 1 ) × 0.5</div>
-
-  <h2>下注計算</h2>
-  <div class="kbox">
-    <div class="krow"><span class="label">本金</span>
-      <input id="k-bank" class="kin" type="text" inputmode="numeric" value="30000"></div>
-    <div class="krow"><span class="label">最低注</span>
-      <input id="k-min" class="kin" type="text" inputmode="numeric" value="100"></div>
-    <div class="krow"><span class="label">目前真數</span>
-      <div class="step"><button type="button" id="k-dn">−</button><span id="k-tc">+2</span><button type="button" id="k-up">＋</button></div></div>
-    <div class="kout">
-      <div><div class="v" id="k-edge">—</div><div class="k">你的優勢</div></div>
-      <div><div class="v" id="k-bet">—</div><div class="k">建議下注</div></div>
-      <div><div class="v" id="k-unit">—</div><div class="k">＝幾個最低注</div></div>
+  <details class="fold">
+    <summary>凱利公式 · 該押多少</summary>
+    <div class="kbox">
+      <div class="krow"><span class="label">本金</span>
+        <input id="k-bank" class="kin" type="text" inputmode="numeric" value="30000"></div>
+      <div class="krow"><span class="label">最低注</span>
+        <input id="k-min" class="kin" type="text" inputmode="numeric" value="100"></div>
+      <div class="krow"><span class="label">目前真數</span>
+        <div class="step"><button type="button" id="k-dn">−</button><span id="k-tc">+2</span><button type="button" id="k-up">＋</button></div></div>
+      <div class="kout">
+        <div><div class="v" id="k-edge">—</div><div class="k">你的優勢</div></div>
+        <div><div class="v" id="k-bet">—</div><div class="k">建議下注</div></div>
+        <div><div class="v" id="k-unit">—</div><div class="k">＝幾個最低注</div></div>
+      </div>
+      <p class="note" id="k-note" style="margin-top:13px"></p>
     </div>
-    <p class="note" id="k-note" style="margin-top:13px"></p>
-  </div>
-  <p class="note"><b>為什麼建議用半凱利</b>：全凱利的波動大到多數人撐不住——本金腰斬是家常便飯。押一半，長期成長率只掉約 25%，但資金起伏減半，破產機率大幅下降。上面算的就是半凱利。<br><br>
-  真數是負的或還不到 ＋1 時，正確答案是<b>下最低注</b>（或乾脆不上桌），不是不下注硬撐——一直坐著不押會被看出來。<br><br>
-  注碼跳動也要收斂：從 100 直接跳到 2000 等於在賭場臉上寫「我在算牌」。實務上一次調整控制在前一手的兩倍以內，換靴或輸的那一手之後再往上加。</p>
+    <p class="note">算出來的是<b>半凱利</b>——全凱利的波動大到多數人撐不住，押一半長期成長率只掉約 25%，但資金起伏減半。<br><br>
+    真數還不到 ＋1 時正確答案是<b>下最低注</b>，不是不下注硬撐——一直坐著不押會被看出來。注碼跳動也要收斂，一次調整控制在前一手的兩倍以內。</p>
+
+    <details class="fold sub">
+      <summary>公式怎麼來的</summary>
+      <p class="note">算牌告訴你「現在有沒有優勢」，凱利公式回答下一個問題——<b>有優勢的時候該押身上多少錢</b>。押太小贏的速度慢到沒有意義；押太大，就算每一把期望值都是正的，也會在某一段連輸裡把本金輸光。</p>
+      <div class="formula">f<em>*</em> ＝ ( b·p − q ) ÷ b<br>
+        <span class="sm">b 賠率　p 勝率　q 敗率（＝1−p）　f* 該押本金的幾成</span></div>
+      <p class="note">21點不是單純的輸贏兩種結果（有平手、加倍、分牌、Blackjack 賠 1.5），所以實務上用等價的形式：</p>
+      <div class="formula">f<em>*</em> ≈ <em>優勢</em> ÷ <em>變異數</em>　≈　優勢 ÷ 1.32<br>
+        <span class="sm">21點每一單位下注的變異數約 1.32</span></div>
+      <p class="note">優勢從真數來。八副 S17、Blackjack 3:2、可 DAS 的桌子，真數 ＋1 左右才打平，之後真數每多 ＋1，優勢大約多 0.5%：</p>
+      <div class="formula">優勢% ≈ ( <em>真數</em> − 1 ) × 0.5</div>
+    </details>
+  </details>
 </section>
 
 <!-- ══ CHART ══ -->
@@ -1556,8 +1580,8 @@ function cPaint(){
   av.textContent=d.q?pc+"%":"—";
   av.className="v"+(perfect&&d.q?" up":(d.q&&pc<90?" down":""));
   $("c-streak").textContent=cstats.streak||0;
-  $("c-best").textContent=cstats.best||0;
-  $("c-sec").textContent=d.tn?(d.t/d.tn).toFixed(1)+"s":"—";
+  $("c-gsub").textContent="最佳連續 "+(cstats.best||0)+"　·　平均 "+
+    (d.tn?(d.t/d.tn).toFixed(1)+"s":"—");
   $("c-todayq").innerHTML=d.q+"<em> / "+CGOAL+" 題</em>";
   $("c-todayacc").textContent=d.q?("正確率 "+pc+"%"+(perfect?" · 全對":"")):"正確率 —";
   const bar=$("c-goalbar");
@@ -1658,14 +1682,18 @@ function cNewTrue(){
   $("c-gauge").classList.add("hide");
   cKeypad();cClock();
 }
+/* 四欄：數字佔左三欄，功能鍵沿右邊直排，送出佔右下兩格（拇指最好按的位置）。
+   比「三欄＋底下再一列送出」矮一整列。 */
 function cKeypad(){
+  const num=function(n){return '<button data-k="'+n+'">'+n+'</button>';};
   $("c-input").innerHTML=
-    '<div class="cdisp ph" id="c-disp">輸入答案</div><div class="kpad">'+
-    [1,2,3,4,5,6,7,8,9].map(function(n){return '<button data-k="'+n+'">'+n+'</button>';}).join("")+
-    '<button class="fn" data-k="sign">＋／－</button><button data-k="0">0</button>'+
-    '<button class="fn" data-k="del">刪除</button></div>'+
-    '<div class="krow2"><button class="ksub" data-k="clear">清除</button>'+
-    '<button class="next" id="c-submit">送出</button></div>';
+    '<div class="cdisp ph" id="c-disp">輸入答案</div><div class="kpad4">'+
+    num(1)+num(2)+num(3)+'<button class="fn" data-k="del">刪除</button>'+
+    num(4)+num(5)+num(6)+'<button class="fn" data-k="clear">清除</button>'+
+    num(7)+num(8)+num(9)+
+    '<button class="go" id="c-submit">送出</button>'+
+    '<button class="fn" data-k="sign">＋／－</button>'+
+    '<button class="wide" data-k="0">0</button></div>';
   cDisp();
 }
 function cDisp(){
