@@ -323,13 +323,23 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .cscene .label{display:block;margin-bottom:6px}
 .cscene b{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--text)}
 .cdisp{border:1px solid var(--hair-2);border-radius:3px;background:var(--surface);
-  padding:12px;text-align:center;font-family:var(--mono);font-size:28px;font-weight:600;
-  margin-bottom:8px;min-height:56px;letter-spacing:.04em;line-height:1.1}
+  padding:10px;text-align:center;font-family:var(--mono);font-size:25px;font-weight:600;
+  margin-bottom:7px;min-height:48px;letter-spacing:.04em;line-height:1.1}
 .cdisp.ph{color:var(--muted);font-size:15px;font-weight:400;letter-spacing:.14em}
 .kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .kpad button{border:1px solid var(--hair-2);background:var(--surface-2);color:var(--text);
-  border-radius:3px;padding:15px 0;font-family:var(--mono);font-size:21px;font-weight:500;
+  border-radius:3px;padding:12px 0;font-family:var(--mono);font-size:20px;font-weight:500;
   cursor:pointer;transition:background .14s,transform .08s}
+/* 鍵盤很佔高度，作答區整組壓矮一點，題目跟鍵盤才能同時在一個畫面裡 */
+#c-input .next{padding:14px}
+.cstage.compact{min-height:0;padding:2px 0}
+.tg:disabled{opacity:.3;cursor:default}
+.tg:disabled:hover{background:transparent;color:inherit}
+/* 三組設定（張數／一次幾張／速度）長得一樣，中間要有東西隔開才看得出是三組 */
+.tgsep{width:1px;background:var(--hair-2);margin:2px 4px;align-self:stretch}
+.tg.lg{padding:11px 24px;font-size:15px;border-color:var(--brass);color:var(--brass)}
+.tg.lg[aria-pressed="true"]{background:var(--brass);color:#16191B;border-color:var(--brass)}
+.gseg{margin:0 0 24px}
 .kpad button:active{transform:translateY(1px);background:#121618}
 .kpad button.fn{font-size:15px;color:var(--muted);background:transparent;font-family:inherit}
 .acts.three{grid-template-columns:repeat(3,1fr)}
@@ -417,13 +427,17 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <div class="gatebox">
     <div class="glogo">戰勝<em>21</em>點</div>
     <p class="gsub">基本策略練習器</p>
+    <div class="seg gseg" id="g-mode">
+      <button data-m="login" aria-selected="true">登入</button>
+      <button data-m="reg" aria-selected="false">註冊</button>
+    </div>
     <label class="label" for="g-name">暱稱</label>
     <input id="g-name" class="gin" type="text" maxlength="12" placeholder="例如：彥彥" autocomplete="off">
     <label class="label" for="g-pin">四位數字密碼</label>
     <input id="g-pin" class="gin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
     <button class="gbtn" id="g-go">開始練習</button>
     <p class="gmsg" id="g-msg"></p>
-    <p class="ghint">第一次輸入的暱稱與密碼就是你的帳號。換手機、換瀏覽器打同一組，就會看到同一份記錄。</p>
+    <p class="ghint" id="g-hint">換手機、換瀏覽器打同一組帳號密碼，就會看到同一份記錄。</p>
   </div>
 </div>
 <div class="wrap">
@@ -533,9 +547,10 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
       <button class="act" data-a="P"><span class="k">P</span>分牌</button>
     </div>
     <button class="next hide" id="sim-next">下一手</button>
+    <button class="next hide" id="sim-begin">開始</button>
   </div>
   <div class="toggles">
-    <button class="tg" id="sim-pause" aria-pressed="false">暫停</button>
+    <button class="tg lg" id="sim-pause" aria-pressed="false">暫停</button>
     <button class="tg" id="sim-reset">重新開始</button>
     <button class="tg" id="sim-live" aria-pressed="false">即時糾正</button>
   </div>
@@ -564,7 +579,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
       <div class="cstage" id="c-stage"></div>
       <div class="readout" id="c-readout"></div>
     </div>
-    <div class="gauge">
+    <div class="gauge hide" id="c-gauge">
       <span class="label">進度</span>
       <div class="bar"><i id="c-fill" style="width:0%"></i></div>
       <span class="pct" id="c-prog">—</span>
@@ -1106,7 +1121,28 @@ function shoeGauge(){
   $("shoe-fill").style.width=(left*100).toFixed(0)+"%";
   $("shoe-pct").textContent=Math.round(left*100)+"%";
 }
+/* 進分頁不要直接開牌：先讓人按「開始」，計時才從他真的準備好的那一刻算 */
+function simIdle(){
+  sim.phase="idle";
+  $("sim-acts").classList.add("hide");
+  $("sim-next").classList.add("hide");
+  $("sim-slot").innerHTML="";
+  $("sim-begin").classList.remove("hide");
+  $("sim-begin").textContent=sim.played?"繼續":"開始";
+  $("sim-pause").disabled=true;
+  stopThink();
+  /* 還沒發過牌就擺牌背佔位，不要開一塊空的綠桌 */
+  if(!sim.dealer.length){
+    $("sim-dealer").replaceChildren(ghost());
+    $("sim-dtotal").textContent="";
+    $("sim-hands").replaceChildren(ghost(),ghost());
+    $("think-live").textContent="—";
+  }
+  simPaint();shoeGauge();
+}
 function simStart(){
+  $("sim-begin").classList.add("hide");
+  $("sim-pause").disabled=false;
   sim.shuffled=false;
   if(!sim.sessStart)sim.sessStart=Date.now();
   if(!shoe.length||si>shoe.length*0.72){newShoe();sim.shuffled=true;}
@@ -1412,6 +1448,7 @@ $("err-list").onclick=function(e){
   renderErrors();
 };
 function togglePause(){
+  if(sim.phase==="idle")return;        /* 還沒開始就沒有東西可以暫停，simRender 也還沒有牌可以畫 */
   sim.paused=!sim.paused;
   const btn=$("sim-pause");
   btn.setAttribute("aria-pressed",sim.paused);
@@ -1436,12 +1473,14 @@ $("modes").onclick=function(e){
   $("modes").querySelectorAll(".tg").forEach(function(c){c.setAttribute("aria-pressed",c===b);});
   randomHand();};
 $("sim-live").onclick=function(){sim.live=!sim.live;this.setAttribute("aria-pressed",sim.live);};
+$("sim-begin").onclick=function(){$("sim-slot").innerHTML="";simStart();};
 $("sim-reset").onclick=function(){
   sim.bank=0;sim.played=0;sim.decisions=0;sim.errors=0;sim.tSum=0;sim.tCount=0;
-  sim.paused=false;sim.sessStart=Date.now();sim.sessPaused=0;
+  sim.paused=false;sim.sessStart=0;sim.sessPaused=0;
+  sim.dealer=[];sim.hands=[];
   $("sim-pause").setAttribute("aria-pressed","false");$("sim-pause").textContent="暫停";
   $("s-table").classList.remove("paused");
-  newShoe();$("sim-slot").innerHTML="";simStart();};
+  newShoe();$("sim-slot").innerHTML="";simIdle();};
 $("seg").onclick=function(e){
   const b=e.target.closest("button");if(!b)return;chartTab=b.dataset.t;
   $("seg").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
@@ -1454,7 +1493,7 @@ function tab(w){
   if(w==="chart")renderChart();
   if(w==="log")renderLog();
   if(w==="set"){paintSet();}
-  if(w==="sim"){if(sim.phase==="idle")simStart();startThink();}else stopThink();
+  if(w==="sim"){if(sim.phase==="idle")simIdle();else startThink();}else stopThink();
   if(w==="count"){cEnter();}else cLeave();
   window.scrollTo({top:0,behavior:"instant"});
 }
@@ -1472,7 +1511,7 @@ document.addEventListener("keydown",function(e){
     const b=$(inSim?"sim-acts":"drill-acts").querySelector('.act[data-a="'+k+'"]');
     if(b&&!b.disabled){b.classList.add("picked");inSim?simAct(k,b):drillAnswer(k,b);}
   }else if(e.code==="Space"){
-    if(inSim&&sim.phase==="done"){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
+    if(inSim&&(sim.phase==="done"||sim.phase==="idle")){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
     else if(!inSim&&answered){e.preventDefault();deal();}
   }});
 /* ═══ 算牌 · 標準 Hi-Lo ═══ */
@@ -1483,8 +1522,9 @@ const CSTORE="bj-count-stats",CGOAL=30;
 const CBAG=[2,3,4,5,6,7,8,9,10,10,10,10,11];   /* 一個花色：J Q K 都算 10 點，所以 10 佔 4/13 */
 const CSPEED=[["慢",1100],["中",800],["快",550],["極速",350]];
 const CLEN=[10,20,52];
+const CPER=[["一張一張",1],["兩張一組",2]];
 let cstats={q:0,correct:0,streak:0,best:0,days:{}};
-let cmode="value",copt={n:20,speed:800},cq=null,cbuf="",cneg=false;
+let cmode="value",copt={n:20,speed:800,per:1},cq=null,cbuf="",cneg=false;
 let cTimer=null,cTick=null,cT0=0;
 
 function hilo(v){return v<=6?1:(v<=9?0:-1);}            /* v：2–11，11 代表 A */
@@ -1518,15 +1558,18 @@ function cPaint(){
 }
 function cOpts(){
   const box=$("c-opts");box.innerHTML="";
-  if(cmode!=="flow")return;                            /* 只有流水數用得到張數與速度 */
-  CLEN.forEach(function(n){
+  if(cmode!=="flow")return;                            /* 只有流水數用得到張數、速度與一次幾張 */
+  function tg(text,key,val,on){
     const b=document.createElement("button");
-    b.className="tg";b.textContent=n+" 張";b.dataset.n=n;
-    b.setAttribute("aria-pressed",copt.n===n);box.appendChild(b);});
-  CSPEED.forEach(function(s){
-    const b=document.createElement("button");
-    b.className="tg";b.textContent=s[0];b.dataset.s=s[1];
-    b.setAttribute("aria-pressed",copt.speed===s[1]);box.appendChild(b);});
+    b.className="tg";b.textContent=text;b.dataset[key]=val;
+    b.setAttribute("aria-pressed",on);box.appendChild(b);}
+  function sep(){const s=document.createElement("span");s.className="tgsep";box.appendChild(s);}
+  CLEN.forEach(function(n){tg(n+" 張","n",n,copt.n===n);});
+  sep();
+  /* 真的在賭桌上牌是一組一組出的，兩張一組是進階的消牌練習 */
+  CPER.forEach(function(p){tg(p[0],"per",p[1],copt.per===p[1]);});
+  sep();
+  CSPEED.forEach(function(s){tg(s[0],"s",s[1],copt.speed===s[1]);});
 }
 function cClock(){
   cT0=Date.now();clearInterval(cTick);
@@ -1538,6 +1581,7 @@ function cLeave(){clearTimeout(cTimer);clearInterval(cTick);cTick=null;cq=null;}
 
 function cNext(){
   clearTimeout(cTimer);
+  clearInterval(cTick);cTick=null;   /* 沒停掉的話，上一題的碼表會在發牌途中繼續跳秒數 */
   $("c-slot").innerHTML="";$("c-next").classList.add("hide");
   $("c-table").classList.remove("win","lose");
   $("c-readout").textContent="";
@@ -1550,8 +1594,9 @@ function cNewValue(){
   const v=rnd(CBAG);
   cq={mode:"value",answer:hilo(v),shown:card(v)};
   $("c-label").textContent="這張算幾點？";
+  $("c-stage").className="cstage";
   $("c-stage").innerHTML="";$("c-stage").appendChild(cardEl(cq.shown));
-  $("c-prog").textContent="—";$("c-fill").style.width="0%";
+  $("c-gauge").classList.add("hide");                  /* 沒有進度也沒有張數，量表只會是一排破折號 */
   $("c-input").innerHTML='<div class="acts three">'+
     '<button class="act" data-v="1">＋1</button>'+
     '<button class="act" data-v="0">0</button>'+
@@ -1559,11 +1604,13 @@ function cNewValue(){
   cClock();
 }
 function cNewFlow(){
-  const n=copt.n,cards=[];let rc=0;
+  const per=copt.per,n=Math.ceil(copt.n/per)*per,cards=[];let rc=0;
   for(let i=0;i<n;i++){const v=rnd(CBAG);cards.push(card(v));rc+=hilo(v);}
-  cq={mode:"flow",answer:rc,cards:cards,i:0,n:n};
-  $("c-label").textContent="盯著牌，數流水數";
+  cq={mode:"flow",answer:rc,cards:cards,i:0,n:n,per:per};
+  $("c-label").textContent=per>1?"兩張一組，數流水數":"盯著牌，數流水數";
+  $("c-stage").className="cstage";
   $("c-input").innerHTML="";$("c-stage").innerHTML="";
+  $("c-gauge").classList.remove("hide");
   $("c-prog").textContent="0 / "+n;$("c-fill").style.width="0%";$("c-time").textContent="—";
   (function step(){
     if(cq.i>=n){
@@ -1571,11 +1618,12 @@ function cNewFlow(){
       $("c-label").textContent="流水數是多少？";
       cKeypad();cClock();return;
     }
-    const c=cq.cards[cq.i++];
-    $("c-stage").innerHTML="";$("c-stage").appendChild(cardEl(c));
+    const st=$("c-stage");st.innerHTML="";
+    for(let k=0;k<per&&cq.i<n;k++)st.appendChild(cardEl(cq.cards[cq.i++]));
     $("c-prog").textContent=cq.i+" / "+n;
     $("c-fill").style.width=Math.round(cq.i/n*100)+"%";
-    cTimer=setTimeout(step,copt.speed);
+    /* 兩張一組要多給一點時間，不然只是變成「看不清楚」而不是「消得快」 */
+    cTimer=setTimeout(step,per>1?Math.round(copt.speed*1.6):copt.speed);
   })();
 }
 function cNewTrue(){
@@ -1590,11 +1638,12 @@ function cNewTrue(){
   }while((rem<0.5||Math.abs(tc)>12||Math.abs(Math.abs(tc%1)-0.5)<0.08)&&g<80);
   cq={mode:"true",rc:rc,rem:rem,decks:decks,dealt:dealt,exact:tc,answer:Math.round(tc)};
   $("c-label").textContent="真數是多少？";
+  $("c-stage").className="cstage compact";             /* 只有一行題目，不必留發牌用的高度 */
   $("c-stage").innerHTML='<div class="cscene">'+
     '<div><span class="label">流水數</span><b>'+sgn(rc)+'</b></div>'+
     '<div><span class="label">牌盒</span><b>'+decks+' 副</b></div>'+
     '<div><span class="label">已發</span><b>'+dealt+' 副</b></div></div>';
-  $("c-prog").textContent="—";$("c-fill").style.width="0%";
+  $("c-gauge").classList.add("hide");
   cKeypad();cClock();
 }
 function cKeypad(){
@@ -1629,7 +1678,8 @@ function cGrade(mine){
     desc="真數 · 流水"+sgn(cq.rc)+" / 剩 "+cq.rem+" 副";
   }else{
     ok=mine===cq.answer;
-    desc=cq.mode==="value"?("牌值 "+cq.shown.label):("流水數 "+cq.n+" 張");
+    desc=cq.mode==="value"?("牌值 "+cq.shown.label)
+      :("流水數 "+cq.n+" 張"+(cq.per>1?" · 兩張一組":""));
   }
   const d=cday();d.q++;if(ok)d.c++;
   if(secs>0&&secs<300){d.t+=secs;d.tn++;}
@@ -1656,7 +1706,7 @@ function cVerdict(ok,mine,right){
   }
   let sub,body;
   if(cq.mode==="flow"){
-    sub=cq.n+" 張 · "+(copt.speed/1000).toFixed(2)+"s／張";
+    sub=cq.n+" 張 · "+(cq.per>1?"兩張一組":"一張一張");
     body=ok?("流水數 "+right+"，正確。")
       :("你數到 "+sgn(mine)+"，實際是 <b>"+right+"</b>，差了 "+Math.abs(mine-cq.answer)+"。");
   }else{
@@ -1697,6 +1747,7 @@ $("c-opts").onclick=function(e){
   const b=e.target.closest(".tg");if(!b)return;
   if(b.dataset.n)copt.n=+b.dataset.n;
   if(b.dataset.s)copt.speed=+b.dataset.s;
+  if(b.dataset.per)copt.per=+b.dataset.per;
   cOpts();cNext();};
 $("c-input").onclick=function(e){
   const b=e.target.closest("button");if(!b||b.disabled)return;
@@ -1863,16 +1914,31 @@ function closeGate(){
   $("gate").classList.add("hide");
   paint();renderChart();renderLog();cPaint();paintSet();
 }
+/* 登入與註冊分開：打錯字就不會默默生出一個新帳號，記錄也不會憑空消失 */
+let gmode="login";
+$("g-mode").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;
+  gmode=b.dataset.m;
+  $("g-mode").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
+  $("g-go").textContent=gmode==="reg"?"建立帳號":"開始練習";
+  $("g-hint").textContent=gmode==="reg"
+    ? "取一個好記的暱稱，配四位數字密碼。之後在任何裝置打同一組就看得到同一份記錄。"
+    : "換手機、換瀏覽器打同一組帳號密碼，就會看到同一份記錄。";
+  $("g-msg").textContent="";$("g-msg").className="gmsg";
+};
 function gateGo(){
   var nm=$("g-name").value.trim(),pin=$("g-pin").value.trim(),msg=$("g-msg"),btn=$("g-go");
+  var reg=gmode==="reg";
   msg.className="gmsg";
   if(!nm){msg.textContent="請輸入暱稱";return;}
   if(!/^\d{4}$/.test(pin)){msg.textContent="密碼要剛好四位數字";return;}
-  btn.disabled=true;msg.textContent="登入中…";
-  jsonp({action:"login",name:nm,pin:pin},function(d){
+  btn.disabled=true;msg.textContent=reg?"建立中…":"登入中…";
+  jsonp({action:reg?"register":"login",name:nm,pin:pin},function(d){
     btn.disabled=false;
     if(!d||!d.ok){
-      msg.textContent=(d&&d.error==="bad_pin")?"這個暱稱已經有人用了，密碼不對"
+      msg.textContent=(d&&d.error==="exists")?"這個暱稱已經有人用了，換一個"
+        :(d&&d.error==="no_user")?"沒有這個帳號，第一次來請按「註冊」"
+        :(d&&d.error==="bad_pin")?"密碼不對"
         :(d&&d.error==="bad_input")?"暱稱或密碼格式不對"
         :"連不上伺服器，請檢查網路後再試";
       return;
@@ -1883,6 +1949,7 @@ function gateGo(){
     applyRemote(d.days);applyCount(d.count);
     msg.className="gmsg ok";
     msg.textContent=d.created?"帳號建立完成":("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
+    gmode="login";
     setTimeout(closeGate,600);
   });
 }
@@ -1896,6 +1963,9 @@ $("switch").onclick=function(){
   admLoaded=false;$("adm").classList.add("hide");
   $("g-name").value="";$("g-pin").value="";
   $("g-msg").textContent="";$("g-msg").className="gmsg";
+  gmode="login";$("g-go").textContent="開始練習";
+  $("g-mode").querySelectorAll("button").forEach(function(x){
+    x.setAttribute("aria-selected",x.dataset.m==="login");});
   $("gate").classList.remove("hide");
   window.scrollTo({top:0,behavior:"instant"});
 };

@@ -425,14 +425,19 @@ function doGet(e) {
   var cb = p.callback;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  if (p.action === 'login' || p.action === 'load') {
+  if (p.action === 'login' || p.action === 'load' || p.action === 'register') {
     var lock = LockService.getScriptLock();
     try { lock.waitLock(20000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
     try {
-      // login：暱稱沒人用過就直接建立；load：必須已存在
-      var a = auth(ss, p.name, p.pin, p.action === 'login');
+      var isReg = p.action === 'register';
+      // 註冊才建帳號。登入不建：打錯字應該要報「沒有這個帳號」，
+      // 不是默默開一個新的、讓人以為練習記錄不見了。
+      if (isReg && findUser(ss, cleanName(p.name)).row > 0) {
+        return out({ ok: false, error: 'exists' }, cb);
+      }
+      var a = auth(ss, p.name, p.pin, isReg);
       if (!a.ok) return out({ ok: false, error: a.error }, cb);
-      if (p.action === 'login') markLogin(ss, a);
+      if (p.action !== 'load') markLogin(ss, a);
       var st = daysOf(ss, a.name);
       return out({
         ok: true, created: !!a.created, name: a.name, role: a.role,
