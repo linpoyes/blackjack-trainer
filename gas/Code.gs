@@ -550,6 +550,21 @@ function clearCount(ss, name) {
   return removed;
 }
 
+/** 三張記錄表裡的「練習者／暱稱」欄一起改名。暱稱是資料的鍵，漏掉一張記錄就對不上了。 */
+function renameEverywhere(ss, oldName, newName) {
+  var targets = [[SH_HANDS, 3], [SH_DAILY, 2], [SH_LOGIN, 2]];
+  for (var t = 0; t < targets.length; t++) {
+    var sh = ss.getSheetByName(targets[t][0]);
+    if (!sh || sh.getLastRow() < 2) continue;
+    var rng = sh.getRange(2, targets[t][1], sh.getLastRow() - 1, 1);
+    var v = rng.getValues(), hit = false;
+    for (var i = 0; i < v.length; i++) {
+      if (String(v[i][0]) === oldName) { v[i][0] = newName; hit = true; }
+    }
+    if (hit) rng.setValues(v);
+  }
+}
+
 /* ═══════════ 讀取（JSONP）═══════════ */
 
 function doGet(e) {
@@ -561,13 +576,9 @@ function doGet(e) {
     var lock = LockService.getScriptLock();
     try { lock.waitLock(20000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
     try {
-      var isReg = p.action === 'register';
-      // 註冊才建帳號。登入不建：打錯字應該要報「沒有這個帳號」，
-      // 不是默默開一個新的、讓人以為練習記錄不見了。
-      if (isReg && findUser(ss, cleanName(p.name)).row > 0) {
-        return out({ ok: false, error: 'exists' }, cb);
-      }
-      var a = auth(ss, p.name, p.pin, isReg);
+      // 暱稱沒人用過就直接建立（load 例外，那支是純讀取）。
+      // 打錯字會生出新帳號，所以回應一定要帶 created，前端要明講「已建立新帳號」。
+      var a = auth(ss, p.name, p.pin, p.action !== 'load');
       if (!a.ok) return out({ ok: false, error: a.error }, cb);
       if (p.action !== 'load') markLogin(ss, a);
       var st = daysOf(ss, a.name);
@@ -704,6 +715,47 @@ function doGet(e) {
                    dropped: dropped, days: st3.days, count: st3.count }, cb);
     } finally {
       mlk.releaseLock();
+    }
+  }
+
+  /**
+   * 改暱稱。暱稱是所有記錄的鍵，所以四張表都要一起改；
+   * 而且憑證的雜湊裡含暱稱，改完舊雜湊一定對不上，用哪一種登入就重算哪一種。
+   */
+  if (p.action === 'rename') {
+    var rlk = LockService.getScriptLock();
+    try { rlk.waitLock(30000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      var ra = auth(ss, p.name, p.pin, false);
+      if (!ra.ok) return out(ra, cb);
+      var nn3 = cleanName(p.newname);
+      if (!nn3) return out({ ok: false, error: 'bad_input' }, cb);
+      if (nn3 === ra.name) return out({ ok: false, error: 'same' }, cb);
+      if (findUser(ss, nn3).row > 0) return out({ ok: false, error: 'exists' }, cb);
+
+      var shR = sheetOf(ss, SH_USERS, HEAD_USERS);
+      var rowR = ra.row, oldName = ra.name;
+      var before = findUser(ss, oldName);
+      shR.getRange(rowR, U_NAME).setValue(nn3);
+
+      var usedPin = /^\d{4}$/.test(String(p.pin || ''));
+      var newTok = '';
+      if (usedPin) {
+        shR.getRange(rowR, U_HASH).setValue(hashPin(nn3, String(p.pin)));
+        shR.getRange(rowR, U_TOKEN).setValue('');   // 權杖失效，下次按 Google 會拿到新的
+        newTok = String(p.pin);
+      } else {
+        // 用 Google 權杖登入的，沒有四位數密碼的明文可以重算，只能清掉
+        shR.getRange(rowR, U_HASH).setValue('');
+        newTok = issueToken(shR, rowR, nn3);
+      }
+      renameEverywhere(ss, oldName, nn3);
+      var stR = daysOf(ss, nn3);
+      return out({ ok: true, name: nn3, role: ra.role, token: newTok,
+                   pinCleared: !usedPin && !!before.hash,
+                   days: stR.days, count: stR.count }, cb);
+    } finally {
+      rlk.releaseLock();
     }
   }
 
