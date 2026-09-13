@@ -499,28 +499,6 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
       <div class="gor"><span>或</span></div>
     </div>
 
-    <!-- Google 第一次登入：還沒有對應的帳號，問他要開新的還是綁既有的 -->
-    <div id="g-new" class="hide">
-      <p class="gnew-t">第一次用 Google 登入</p>
-      <div class="seg gseg" id="g-nmode">
-        <button type="button" data-m="new" aria-selected="true">開新帳號</button>
-        <button type="button" data-m="link" aria-selected="false">綁定既有帳號</button>
-      </div>
-      <div id="g-new-a">
-        <label class="label" for="g-nname">暱稱</label>
-        <input id="g-nname" class="gin" type="text" maxlength="12" autocomplete="off">
-      </div>
-      <div id="g-new-b" class="hide">
-        <label class="label" for="g-lname">原本的暱稱</label>
-        <input id="g-lname" class="gin" type="text" maxlength="12" autocomplete="off">
-        <label class="label" for="g-lpin">原本的四位數字密碼</label>
-        <input id="g-lpin" class="gin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
-      </div>
-      <button class="gbtn" id="g-ngo">完成</button>
-      <p class="gmsg" id="g-nmsg"></p>
-      <button class="reset" id="g-ncancel" style="display:block;margin:14px auto 0">取消</button>
-    </div>
-
     <div id="g-pw">
     <div class="seg gseg" id="g-mode">
       <button data-m="login" aria-selected="true">登入</button>
@@ -836,6 +814,19 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <button class="next2" id="switch">切換帳號</button>
   <button class="next2" id="reset">清除本機記錄</button>
   <p class="note">切換帳號不會刪掉雲端記錄；清除本機記錄只清這台裝置，重新登入同一組帳號密碼會把雲端的每日統計拉回來。</p>
+
+  <div id="mergebox" class="hide">
+    <h2>合併舊帳號</h2>
+    <div class="setblk">
+      <div class="r"><span>舊的暱稱</span>
+        <input id="mg-name" class="kin" type="text" maxlength="12" style="text-align:left" autocomplete="off"></div>
+      <div class="r"><span>舊的四位數字密碼</span>
+        <input id="mg-pin" class="kin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+    </div>
+    <button class="next2" id="mg-go">把記錄併過來</button>
+    <p class="gmsg" id="mg-msg"></p>
+    <p class="note">如果你以前用暱稱加四位數密碼練習過，在這裡輸入那組帳密，舊的練習記錄就會接到現在這個 Google 帳號上。要驗舊密碼，不然誰都能把別人的記錄搬走。</p>
+  </div>
 
   <div id="adm" class="hide">
     <h2>建立帳號 <span class="badge">系統人員</span></h2>
@@ -2004,6 +1995,7 @@ function paintSet(){
   $("st-role").innerHTML=isAdmin()?'<span class="role">系統人員</span>':'<span class="role" style="color:var(--muted);font-weight:400">一般使用者</span>';
   $("st-how").textContent=localStorage.getItem(GKEY)==="1"?"Google":"暱稱＋密碼";
   paintSync();
+  $("mergebox").classList.toggle("hide",localStorage.getItem(GKEY)!=="1"||!playerName());
   $("adm").classList.toggle("hide",!isAdmin());
   if(isAdmin()&&playerName()&&!admLoaded)admLoad();
 }
@@ -2162,33 +2154,16 @@ function googleCred(res){
   gIdToken=res.credential;
   const msg=$("g-msg");
   msg.className="gmsg";msg.textContent="Google 驗證中…";
-  googleGo({});
+  googleGo();
 }
-/* extra 可帶 {name:…} 開新帳號，或 {link:…,linkpin:…} 綁既有帳號 */
-function googleGo(extra){
-  const params={action:"google",idt:gIdToken};
-  for(const k in extra)params[k]=extra[k];
-  jsonp(params,function(d){
+function googleGo(){
+  jsonp({action:"google",idt:gIdToken},function(d){
     if(d&&d.ok){googleDone(d);return;}
     const e=d&&d.error;
-    if(e==="need_name"){
-      $("g-pw").classList.add("hide");$("g-google").classList.add("hide");
-      $("g-msg").textContent="";
-      $("g-nname").value=d.suggest||"";
-      $("g-new").classList.remove("hide");
-      return;
-    }
-    const box=$("g-new").classList.contains("hide")?$("g-msg"):$("g-nmsg");
-    box.className="gmsg";
-    box.textContent=e==="exists"?"這個暱稱已經有人用了，換一個"
-      :e==="already_linked"?"那個帳號已經綁過別的 Google 帳號了"
-      :e==="no_user"?"找不到這個暱稱"
-      :e==="bad_pin"?"原本的密碼不對"
-      :e==="bad_input"?"暱稱或密碼格式不對"
-      :e==="google_off"?"Google 登入還沒設定好"
+    const m=$("g-msg");m.className="gmsg";
+    m.textContent=e==="google_off"?"Google 登入還沒設定好"
       :(e==="bad_token"||e==="expired"||e==="bad_aud")?"Google 驗證沒通過，請再試一次"
       :"連不上伺服器，請檢查網路後再試";
-    $("g-ngo").disabled=false;
   });
 }
 function googleDone(d){
@@ -2198,47 +2173,40 @@ function googleDone(d){
   localStorage.setItem(GKEY,"1");
   admLoaded=false;gIdToken="";
   applyRemote(d.days);applyCount(d.count);
-  const box=$("g-new").classList.contains("hide")?$("g-msg"):$("g-nmsg");
-  box.className="gmsg ok";
-  box.textContent=d.linked?"已綁定，記錄都在"
-    :d.created?"帳號建立完成"
+  const m=$("g-msg");m.className="gmsg ok";
+  m.textContent=d.created?("帳號建立完成："+d.name)
     :("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
-  setTimeout(function(){
-    $("g-new").classList.add("hide");$("g-pw").classList.remove("hide");
-    closeGate();
-  },700);
+  setTimeout(closeGate,700);
 }
-$("g-nmode").onclick=function(e){
-  const b=e.target.closest("button");if(!b)return;
-  $("g-nmode").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
-  const link=b.dataset.m==="link";
-  $("g-new-a").classList.toggle("hide",link);
-  $("g-new-b").classList.toggle("hide",!link);
-  $("g-nmsg").textContent="";$("g-nmsg").className="gmsg";
-};
-$("g-ngo").onclick=function(){
-  const link=$("g-nmode").querySelector('[data-m="link"]').getAttribute("aria-selected")==="true";
-  const m=$("g-nmsg");m.className="gmsg";
-  if(link){
-    const nm=$("g-lname").value.trim(),pin=$("g-lpin").value.trim();
-    if(!nm){m.textContent="請輸入原本的暱稱";return;}
-    if(!/^\d{4}$/.test(pin)){m.textContent="密碼要剛好四位數字";return;}
-    this.disabled=true;m.textContent="綁定中…";
-    googleGo({link:nm,linkpin:pin});
-  }else{
-    const nm=$("g-nname").value.trim();
-    if(!nm){m.textContent="請輸入暱稱";return;}
-    this.disabled=true;m.textContent="建立中…";
-    googleGo({name:nm});
-  }
-};
-$("g-ncancel").onclick=function(){
-  gIdToken="";
-  $("g-new").classList.add("hide");
-  $("g-pw").classList.remove("hide");
-  if(GOOGLE_CLIENT_ID)$("g-google").classList.remove("hide");
-  $("g-msg").textContent="";$("g-msg").className="gmsg";
-  $("g-ngo").disabled=false;
+
+/* 合併舊帳號：只有用 Google 登入的人看得到，而且一定要驗舊帳號的密碼 */
+$("mg-go").onclick=function(){
+  const nm=$("mg-name").value.trim(),pin=$("mg-pin").value.trim(),m=$("mg-msg"),btn=this;
+  m.className="gmsg";
+  if(!nm){m.textContent="請輸入舊的暱稱";return;}
+  if(!/^\d{4}$/.test(pin)){m.textContent="密碼要剛好四位數字";return;}
+  btn.disabled=true;m.textContent="合併中…";
+  jsonp({action:"merge",name:playerName(),pin:playerPin(),old:nm,oldpin:pin},function(d){
+    btn.disabled=false;
+    if(!d||!d.ok){
+      const e=d&&d.error;
+      m.textContent=e==="no_old"?"找不到這個暱稱"
+        :e==="bad_pin"?"舊帳號的密碼不對"
+        :e==="already_linked"?"那個帳號已經綁過別的 Google 帳號了"
+        :e==="same"?"那就是你現在這個帳號"
+        :e==="not_google"?"這個帳號不是用 Google 登入的"
+        :e==="bad_input"?"暱稱或密碼格式不對"
+        :"連不上伺服器，請檢查網路後再試";
+      return;
+    }
+    localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,d.token);
+    localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
+    applyRemote(d.days);applyCount(d.count);
+    m.className="gmsg ok";
+    m.textContent="已併過來："+d.name+"，"+(d.days?d.days.length:0)+" 天的記錄";
+    $("mg-name").value="";$("mg-pin").value="";
+    paint();renderLog();renderChart();paintSet();
+  });
 };
 
 /* 登入與註冊分開：打錯字就不會默默生出一個新帳號，記錄也不會憑空消失 */

@@ -17,7 +17,7 @@ var SH_USERS = '帳號';
 var SH_LOGIN = '登入記錄';
 var HEAD_HANDS = ['時間', '日期', '練習者', '來源', '手牌', '莊家明牌', '你選', '正解', '對錯', '秒數'];
 var HEAD_DAILY = ['日期', '練習者', '手數', '正確', '正確率', '算牌題數', '算牌正確'];
-var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用', '角色', '登入次數', '最後登入', 'Google ID'];
+var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用', '角色', '登入次數', '最後登入', 'Google ID', '權杖雜湊'];
 var HEAD_LOGIN = ['時間', '暱稱', '角色'];
 
 var SRC_COUNT = '算牌';     // 手牌記錄的「來源」欄是這個值，就計入算牌題數而不是策略手數
@@ -28,7 +28,7 @@ var TZ = 'Asia/Taipei';
 
 // 帳號表欄位位置（1-based），改欄位順序時這裡要一起改
 var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6, U_LASTLOGIN = 7,
-    U_GID = 8;
+    U_GID = 8, U_TOKEN = 9;
 
 // Google 登入用的 OAuth 用戶端 ID。這不是密鑰，它本來就會出現在前端網頁原始碼裡。
 // 空字串＝Google 登入關閉，前端不會顯示那顆按鈕。
@@ -175,7 +175,8 @@ function findUser(ss, name) {
         hash: String(v[i][U_HASH - 1]),
         role: String(v[i][U_ROLE - 1] || 'user'),
         logins: Number(v[i][U_LOGINS - 1]) || 0,
-        gid: String(v[i][U_GID - 1] || '')
+        gid: String(v[i][U_GID - 1] || ''),
+        tok: String(v[i][U_TOKEN - 1] || '')
       };
     }
   }
@@ -204,10 +205,13 @@ function auth(ss, name, pin, createIfMissing) {
   var h = hashPin(name, pin);
   if (u.row < 0) {
     if (!createIfMissing) return { ok: false, error: 'no_user' };
-    u.sh.appendRow([name, h, nowText(), nowText(), 'user', 0, '', '']);
+    u.sh.appendRow([name, h, nowText(), nowText(), 'user', 0, '', '', '']);
     return { ok: true, created: true, name: name, role: 'user', row: u.sh.getLastRow(), sh: u.sh, logins: 0 };
   }
-  if (u.hash !== h) return { ok: false, error: 'bad_pin' };
+  // 四位數密碼比「密碼雜湊」，Google 發的權杖比「權杖雜湊」——
+  // 分兩欄存，綁了 Google 之後原本的密碼還是能用。
+  var want = /^\d{4}$/.test(pin) ? u.hash : u.tok;
+  if (!want || want !== h) return { ok: false, error: 'bad_pin' };
   u.sh.getRange(u.row, U_USED).setValue(nowText());
   return { ok: true, created: false, name: name, role: u.role, row: u.row, sh: u.sh,
            logins: u.logins, gid: u.gid };
@@ -260,8 +264,22 @@ function findByGoogle(ss, sub) {
 /** 發一把新權杖給這一列並回傳明文（只有這一次看得到，之後表上只有雜湊） */
 function issueToken(sh, row, name) {
   var tok = newToken();
-  sh.getRange(row, U_HASH).setValue(hashPin(name, tok));
+  sh.getRange(row, U_TOKEN).setValue(hashPin(name, tok));
   return tok;
+}
+
+/**
+ * 從 Google 的名字生出一個還沒被用掉的暱稱。
+ * 撞名就加數字，不要去問使用者——按一下 Google 就該進得去。
+ */
+function uniqueName(ss, base) {
+  base = cleanName(base) || '玩家';
+  if (findUser(ss, base).row < 0) return base;
+  for (var i = 2; i <= 60; i++) {
+    var n = base + i;
+    if (findUser(ss, n).row < 0) return n;
+  }
+  return base + Utilities.getUuid().substring(0, 4);
 }
 
 /** 管理動作共用：驗身分 + 檢查角色。前端的角色只是快取，這裡才是真的關卡。 */
@@ -593,7 +611,7 @@ function doGet(e) {
     if (!nn || !/^\d{4}$/.test(np)) return out({ ok: false, error: 'bad_input' }, cb);
     var ex = findUser(ss, nn);
     if (ex.row > 0) return out({ ok: false, error: 'exists' }, cb);
-    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '', '']);
+    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '', '', '']);
     return out({ ok: true, name: nn }, cb);
   }
 
@@ -609,11 +627,10 @@ function doGet(e) {
   }
 
   /**
-   * Google 登入。三種情況一支處理完：
-   *   已綁過      → 直接登入，發一把新權杖
-   *   沒綁過＋name→ 開新帳號
-   *   沒綁過＋link→ 把這個 Google 帳號綁到既有的暱稱＋密碼帳號（記錄就跟著過來）
-   *   沒綁過也沒給→ 回 need_name，前端再問一次
+   * Google 登入：一按就進得去，不問任何問題。
+   *   綁過了 → 直接登入
+   *   沒綁過 → 用 Google 的名字自動開帳號，撞名就加數字
+   * 想把舊的暱稱密碼帳號併過來，走下面的 merge（那個要驗舊密碼，不能自動）。
    */
   if (p.action === 'google') {
     var glk = LockService.getScriptLock();
@@ -632,31 +649,61 @@ function doGet(e) {
                      token: tk, days: st1.days, count: st1.count }, cb);
       }
 
-      // 綁定既有帳號：要能證明那個帳號是他的，所以照樣驗一次密碼
-      if (p.link) {
-        var la = auth(ss, p.link, p.linkpin, false);
-        if (!la.ok) return out({ ok: false, error: la.error }, cb);
-        if (la.gid) return out({ ok: false, error: 'already_linked' }, cb);
-        la.sh.getRange(la.row, U_GID).setValue(g.sub);
-        var tk2 = issueToken(la.sh, la.row, la.name);
-        markLogin(ss, la);
-        var st2 = daysOf(ss, la.name);
-        return out({ ok: true, created: false, linked: true, name: la.name, role: la.role,
-                     token: tk2, days: st2.days, count: st2.count }, cb);
-      }
-
-      var nn2 = cleanName(p.name);
-      if (!nn2) return out({ ok: false, error: 'need_name', suggest: g.suggest }, cb);
-      if (findUser(ss, nn2).row > 0) return out({ ok: false, error: 'exists' }, cb);
+      var nn2 = uniqueName(ss, g.suggest);
       var sh2 = sheetOf(ss, SH_USERS, HEAD_USERS);
-      var tok2 = newToken();
-      sh2.appendRow([nn2, hashPin(nn2, tok2), nowText(), nowText(), 'user', 0, '', g.sub]);
-      var made = { sh: sh2, row: sh2.getLastRow(), name: nn2, role: 'user', logins: 0 };
+      // 密碼雜湊留空＝這個帳號沒有四位數密碼，只能用 Google 登入
+      sh2.appendRow([nn2, '', nowText(), nowText(), 'user', 0, '', g.sub, '']);
+      var row2 = sh2.getLastRow();
+      var tok2 = issueToken(sh2, row2, nn2);
+      var made = { sh: sh2, row: row2, name: nn2, role: 'user', logins: 0 };
       markLogin(ss, made);
       return out({ ok: true, created: true, name: nn2, role: 'user',
                    token: tok2, days: [], count: [] }, cb);
     } finally {
       glk.releaseLock();
+    }
+  }
+
+  /**
+   * 把舊的「暱稱＋四位數密碼」帳號併到現在這個 Google 帳號。
+   * 要驗舊密碼——沒有這道關卡，誰都能把別人的記錄搬走。
+   * 併完之後 Google 綁到舊帳號上，自動開的那個空帳號如果沒有練習記錄就刪掉。
+   */
+  if (p.action === 'merge') {
+    var mlk = LockService.getScriptLock();
+    try { mlk.waitLock(25000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      var me = auth(ss, p.name, p.pin, false);          // 現在登入中的（Google）帳號
+      if (!me.ok) return out(me, cb);
+      var mine = findUser(ss, me.name);
+      if (!mine.gid) return out({ ok: false, error: 'not_google' }, cb);
+
+      var old = auth(ss, p.old, p.oldpin, false);        // 舊帳號，要驗它自己的密碼
+      if (!old.ok) return out({ ok: false, error: old.error === 'no_user' ? 'no_old' : old.error }, cb);
+      if (old.name === me.name) return out({ ok: false, error: 'same' }, cb);
+      if (old.gid) return out({ ok: false, error: 'already_linked' }, cb);
+
+      var sh3 = sheetOf(ss, SH_USERS, HEAD_USERS);
+      var sub = mine.gid;
+      // 先把 Google ID 從自動開的那個帳號拿掉，再掛到舊帳號上，中途不會有兩個帳號同一個 sub
+      sh3.getRange(mine.row, U_GID).setValue('');
+      var oldRow = findUser(ss, old.name).row;
+      sh3.getRange(oldRow, U_GID).setValue(sub);
+      var tok3 = issueToken(sh3, oldRow, old.name);
+      sh3.getRange(oldRow, U_USED).setValue(nowText());
+
+      // 自動開的空帳號沒有任何練習記錄才刪，有記錄就留著不動
+      var stMine = daysOf(ss, me.name);
+      var dropped = false;
+      if (!stMine.days.length && !stMine.count.length) {
+        sh3.deleteRow(findUser(ss, me.name).row);
+        dropped = true;
+      }
+      var st3 = daysOf(ss, old.name);
+      return out({ ok: true, name: old.name, role: old.role, token: tok3,
+                   dropped: dropped, days: st3.days, count: st3.count }, cb);
+    } finally {
+      mlk.releaseLock();
     }
   }
 
