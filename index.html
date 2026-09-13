@@ -335,8 +335,14 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .cstage.compact{min-height:0;padding:2px 0}
 .tg:disabled{opacity:.3;cursor:default}
 .tg:disabled:hover{background:transparent;color:inherit}
-/* 三組設定（張數／一次幾張／速度）長得一樣，中間要有東西隔開才看得出是三組 */
-.tgsep{width:1px;background:var(--hair-2);margin:2px 4px;align-self:stretch}
+.tggrp{display:inline-flex;align-items:center;gap:5px;flex-wrap:nowrap}
+.tglab{font-family:var(--sans);font-size:12px;color:var(--muted);white-space:nowrap;margin-right:1px}
+.krow2{display:flex;gap:7px;margin-top:8px}
+.krow2 .next{flex:1}
+.krow2 .ksub{flex:0 0 34%;border:1px dashed var(--hair-2);border-radius:3px;background:transparent;
+  color:var(--muted);font-family:inherit;font-size:15px;cursor:pointer;padding:14px 0;
+  transition:background .14s,color .14s}
+.krow2 .ksub:active{background:var(--surface-2);color:var(--text)}
 .tg.lg{padding:11px 24px;font-size:15px;border-color:var(--brass);color:var(--brass)}
 .tg.lg[aria-pressed="true"]{background:var(--brass);color:#16191B;border-color:var(--brass)}
 .gseg{margin:0 0 24px}
@@ -1522,7 +1528,9 @@ const CSTORE="bj-count-stats",CGOAL=30;
 const CBAG=[2,3,4,5,6,7,8,9,10,10,10,10,11];   /* 一個花色：J Q K 都算 10 點，所以 10 佔 4/13 */
 const CSPEED=[["慢",1100],["中",800],["快",550],["極速",350]];
 const CLEN=[10,20,52];
-const CPER=[["一張一張",1],["兩張一組",2]];
+/* 一次露出幾張。三張以上就不是「逐張加減」而是整組看成一個數字，這是真的在練腦袋 */
+const CPER=[1,2,3,4];
+const PERNAME={1:"一張一張",2:"兩張一組",3:"三張一組",4:"四張一組"};
 let cstats={q:0,correct:0,streak:0,best:0,days:{}};
 let cmode="value",copt={n:20,speed:800,per:1},cq=null,cbuf="",cneg=false;
 let cTimer=null,cTick=null,cT0=0;
@@ -1559,17 +1567,20 @@ function cPaint(){
 function cOpts(){
   const box=$("c-opts");box.innerHTML="";
   if(cmode!=="flow")return;                            /* 只有流水數用得到張數、速度與一次幾張 */
-  function tg(text,key,val,on){
-    const b=document.createElement("button");
-    b.className="tg";b.textContent=text;b.dataset[key]=val;
-    b.setAttribute("aria-pressed",on);box.appendChild(b);}
-  function sep(){const s=document.createElement("span");s.className="tgsep";box.appendChild(s);}
-  CLEN.forEach(function(n){tg(n+" 張","n",n,copt.n===n);});
-  sep();
-  /* 真的在賭桌上牌是一組一組出的，兩張一組是進階的消牌練習 */
-  CPER.forEach(function(p){tg(p[0],"per",p[1],copt.per===p[1]);});
-  sep();
-  CSPEED.forEach(function(s){tg(s[0],"s",s[1],copt.speed===s[1]);});
+  /* 三組按鈕長得一模一樣，要有小標題才分得出哪組是哪組；
+     整組包在一個容器裡，換行時才不會把同一組拆到兩行去。 */
+  function group(title,items){
+    const g=document.createElement("span");g.className="tggrp";
+    const s=document.createElement("span");s.className="tglab";s.textContent=title;g.appendChild(s);
+    items.forEach(function(it){
+      const b=document.createElement("button");
+      b.className="tg";b.textContent=it[0];b.dataset[it[1]]=it[2];
+      b.setAttribute("aria-pressed",it[3]);g.appendChild(b);});
+    box.appendChild(g);
+  }
+  group("總張數",CLEN.map(function(n){return [String(n),"n",n,copt.n===n];}));
+  group("一次",CPER.map(function(p){return [p+" 張","per",p,copt.per===p];}));
+  group("速度",CSPEED.map(function(s){return [s[0],"s",s[1],copt.speed===s[1]];}));
 }
 function cClock(){
   cT0=Date.now();clearInterval(cTick);
@@ -1607,7 +1618,7 @@ function cNewFlow(){
   const per=copt.per,n=Math.ceil(copt.n/per)*per,cards=[];let rc=0;
   for(let i=0;i<n;i++){const v=rnd(CBAG);cards.push(card(v));rc+=hilo(v);}
   cq={mode:"flow",answer:rc,cards:cards,i:0,n:n,per:per};
-  $("c-label").textContent=per>1?"兩張一組，數流水數":"盯著牌，數流水數";
+  $("c-label").textContent=per>1?(PERNAME[per]+"，數流水數"):"盯著牌，數流水數";
   $("c-stage").className="cstage";
   $("c-input").innerHTML="";$("c-stage").innerHTML="";
   $("c-gauge").classList.remove("hide");
@@ -1619,11 +1630,12 @@ function cNewFlow(){
       cKeypad();cClock();return;
     }
     const st=$("c-stage");st.innerHTML="";
-    for(let k=0;k<per&&cq.i<n;k++)st.appendChild(cardEl(cq.cards[cq.i++]));
+    /* 三張以上用小牌，不然 360px 的手機會擠到換行，一組被拆成兩排就失去意義 */
+    for(let k=0;k<per&&cq.i<n;k++)st.appendChild(cardEl(cq.cards[cq.i++],per>=3));
     $("c-prog").textContent=cq.i+" / "+n;
     $("c-fill").style.width=Math.round(cq.i/n*100)+"%";
-    /* 兩張一組要多給一點時間，不然只是變成「看不清楚」而不是「消得快」 */
-    cTimer=setTimeout(step,per>1?Math.round(copt.speed*1.6):copt.speed);
+    /* 一組越多張要多給時間，不然只是變成「看不清楚」而不是「消得快」 */
+    cTimer=setTimeout(step,Math.round(copt.speed*(1+0.55*(per-1))));
   })();
 }
 function cNewTrue(){
@@ -1652,7 +1664,8 @@ function cKeypad(){
     [1,2,3,4,5,6,7,8,9].map(function(n){return '<button data-k="'+n+'">'+n+'</button>';}).join("")+
     '<button class="fn" data-k="sign">＋／－</button><button data-k="0">0</button>'+
     '<button class="fn" data-k="del">刪除</button></div>'+
-    '<button class="next" id="c-submit" style="margin-top:8px">送出</button>';
+    '<div class="krow2"><button class="ksub" data-k="clear">清除</button>'+
+    '<button class="next" id="c-submit">送出</button></div>';
   cDisp();
 }
 function cDisp(){
@@ -1663,6 +1676,7 @@ function cDisp(){
 function cPress(k){
   if(k==="sign")cneg=!cneg;
   else if(k==="del")cbuf=cbuf.slice(0,-1);
+  else if(k==="clear"){cbuf="";cneg=false;}            /* 數錯了要能一鍵歸零重打，不用連按刪除 */
   else if(cbuf.length<2)cbuf+=k;                       /* 兩位數就夠：流水數不會到三位 */
   cDisp();
 }
@@ -1679,7 +1693,7 @@ function cGrade(mine){
   }else{
     ok=mine===cq.answer;
     desc=cq.mode==="value"?("牌值 "+cq.shown.label)
-      :("流水數 "+cq.n+" 張"+(cq.per>1?" · 兩張一組":""));
+      :("流水數 "+cq.n+" 張 · "+PERNAME[cq.per]);
   }
   const d=cday();d.q++;if(ok)d.c++;
   if(secs>0&&secs<300){d.t+=secs;d.tn++;}
@@ -1706,7 +1720,7 @@ function cVerdict(ok,mine,right){
   }
   let sub,body;
   if(cq.mode==="flow"){
-    sub=cq.n+" 張 · "+(cq.per>1?"兩張一組":"一張一張");
+    sub=cq.n+" 張 · "+PERNAME[cq.per];
     body=ok?("流水數 "+right+"，正確。")
       :("你數到 "+sgn(mine)+"，實際是 <b>"+right+"</b>，差了 "+Math.abs(mine-cq.answer)+"。");
   }else{
@@ -1736,6 +1750,7 @@ function cKey(e){
   if(/^[0-9]$/.test(k)){e.preventDefault();cPress(k);}
   else if(k==="-"||k==="+"){e.preventDefault();cneg=(k==="-");cDisp();}
   else if(k==="Backspace"){e.preventDefault();cPress("del");}
+  else if(k==="Escape"||k==="Delete"){e.preventDefault();cPress("clear");}
   else if(k==="Enter"){e.preventDefault();cSubmit();}
 }
 $("cseg").onclick=function(e){
