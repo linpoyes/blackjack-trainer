@@ -70,9 +70,11 @@ h1 em{font-style:normal;color:var(--brass);letter-spacing:.02em;padding:0 1px}
   white-space:nowrap;margin-left:auto}
 .rules[open] .rsum,.rules[open] .redge{display:none}
 .rules[open]>summary::before{content:"收起桌規";font-size:13.5px;color:var(--text)}
-.rules>summary::after{content:"＋";font-family:var(--mono);font-size:15px;
-  color:var(--muted);flex:0 0 14px;text-align:center}
-.rules[open]>summary::after{content:"−"}
+/* 展開指示用箭頭，不要用加號——加號看起來像「新增」 */
+.rules>summary::after{content:"";flex:0 0 8px;width:8px;height:8px;margin:0 2px 3px 0;
+  border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);
+  transform:rotate(45deg);transition:transform .2s}
+.rules[open]>summary::after{transform:rotate(-135deg);margin-bottom:-2px}
 .rules .ruleset{border-bottom:0;margin-top:0;padding-top:0}
 .rules .hint{margin:4px 0 14px}
 .ruleset{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--hair-2);
@@ -303,9 +305,11 @@ td.miss::after{content:"";position:absolute;inset:3px;border:1.5px dashed rgba(2
   font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--muted);font-weight:500;-webkit-user-select:none;user-select:none}
 .fold>summary::-webkit-details-marker{display:none}
-.fold>summary::after{content:"＋";font-size:15px;letter-spacing:0;color:var(--muted)}
+.fold>summary::after{content:"";flex:0 0 8px;width:8px;height:8px;margin:0 2px 3px 0;
+  border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);
+  transform:rotate(45deg);transition:transform .2s}
 .fold[open]>summary{color:var(--text)}
-.fold[open]>summary::after{content:"−"}
+.fold[open]>summary::after{border-color:var(--text);transform:rotate(-135deg);margin-bottom:-2px}
 .fold>*:last-child{margin-bottom:18px}
 .fold .note:first-of-type{margin-top:2px}
 .fold.sub{border-bottom:0;border-top:1px solid var(--hair);margin-top:4px}
@@ -2094,6 +2098,14 @@ $("deck-seg").onclick=function(e){
 };
 
 /* ═══ 登入 ═══ */
+/* 換成不同的人登入：本機統計先歸零。
+   applyRemote 是「取較大者」合併，不清的話上一個人的手數會黏在新帳號上。 */
+function freshIfNewPlayer(name){
+  if(!name||localStorage.getItem(NKEY)===name)return;
+  stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
+  cstats={q:0,correct:0,streak:0,best:0,days:{}};
+  save();csave();
+}
 function applyCount(cd){
   if(!cd||!cd.length)return;
   if(!cstats.days)cstats.days={};
@@ -2168,6 +2180,7 @@ function googleGo(){
 }
 function googleDone(d){
   /* 權杖就是之後的密碼，跟四位數密碼放同一個位置，後面所有呼叫都不用改 */
+  freshIfNewPlayer(d.name);
   localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,d.token);
   localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
   localStorage.setItem(GKEY,"1");
@@ -2240,6 +2253,7 @@ function gateGo(){
         :"連不上伺服器，請檢查網路後再試";
       return;
     }
+    freshIfNewPlayer(d.name);
     localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,pin);
     localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
     localStorage.removeItem(GKEY);
