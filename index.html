@@ -400,6 +400,11 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .tg.lg{padding:11px 24px;font-size:15px;border-color:var(--brass);color:var(--brass)}
 .tg.lg[aria-pressed="true"]{background:var(--brass);color:#16191B;border-color:var(--brass)}
 .gseg{margin:0 0 24px}
+/* Google 登入按鈕由 Google 的指令碼算圖，這裡只負責置中與間距 */
+#g-gbtn{display:flex;justify-content:center;min-height:44px}
+.gor{display:flex;align-items:center;gap:12px;margin:20px 0 22px;color:var(--muted);font-size:13px}
+.gor::before,.gor::after{content:"";flex:1;height:1px;background:var(--hair-2)}
+.gnew-t{text-align:center;font-size:15px;margin:0 0 18px;color:var(--text)}
 .acts.three{grid-template-columns:repeat(3,1fr)}
 .acts.three .act{font-family:var(--mono);font-size:22px;font-weight:600;padding:20px 4px}
 .hilo{width:100%;border-collapse:collapse;margin-top:10px}
@@ -485,6 +490,35 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <div class="gatebox">
     <div class="glogo">戰勝<em>21</em>點</div>
     <p class="gsub">基本策略練習器</p>
+
+    <div id="g-google" class="hide">
+      <div id="g-gbtn"></div>
+      <div class="gor"><span>或</span></div>
+    </div>
+
+    <!-- Google 第一次登入：還沒有對應的帳號，問他要開新的還是綁既有的 -->
+    <div id="g-new" class="hide">
+      <p class="gnew-t">第一次用 Google 登入</p>
+      <div class="seg gseg" id="g-nmode">
+        <button type="button" data-m="new" aria-selected="true">開新帳號</button>
+        <button type="button" data-m="link" aria-selected="false">綁定既有帳號</button>
+      </div>
+      <div id="g-new-a">
+        <label class="label" for="g-nname">暱稱</label>
+        <input id="g-nname" class="gin" type="text" maxlength="12" autocomplete="off">
+      </div>
+      <div id="g-new-b" class="hide">
+        <label class="label" for="g-lname">原本的暱稱</label>
+        <input id="g-lname" class="gin" type="text" maxlength="12" autocomplete="off">
+        <label class="label" for="g-lpin">原本的四位數字密碼</label>
+        <input id="g-lpin" class="gin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+      </div>
+      <button class="gbtn" id="g-ngo">完成</button>
+      <p class="gmsg" id="g-nmsg"></p>
+      <button class="reset" id="g-ncancel" style="display:block;margin:14px auto 0">取消</button>
+    </div>
+
+    <div id="g-pw">
     <div class="seg gseg" id="g-mode">
       <button data-m="login" aria-selected="true">登入</button>
       <button data-m="reg" aria-selected="false">註冊</button>
@@ -496,6 +530,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
     <button class="gbtn" id="g-go">開始練習</button>
     <p class="gmsg" id="g-msg"></p>
     <p class="ghint" id="g-hint">換手機、換瀏覽器打同一組帳號密碼，就會看到同一份記錄。</p>
+    </div>
   </div>
 </div>
 <div class="a2hs hide" id="a2hs">
@@ -793,6 +828,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <div class="setblk">
     <div class="r"><span>目前登入</span><span id="st-name">—</span></div>
     <div class="r"><span>身分</span><span id="st-role">—</span></div>
+    <div class="r"><span>登入方式</span><span id="st-how">—</span></div>
     <div class="r"><span>雲端同步</span><span id="sync-state">—</span></div>
   </div>
   <button class="next2" id="switch">切換帳號</button>
@@ -1955,7 +1991,7 @@ $("k-dn").onclick=function(){if(kTC>-5){kTC--;kPaint();}};
 
 /* ═══ 設定 / 系統人員 ═══ */
 /* 角色由後端在登入時回報，前端只是快取；管理動作一律再帶帳密給後端驗一次 */
-const RKEY="bj-role";
+const RKEY="bj-role",GKEY="bj-google";   /* GKEY 只是「這個帳號是用 Google 登入的」的標記 */
 let admLoaded=false;
 function isAdmin(){return localStorage.getItem(RKEY)==="admin";}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){
@@ -1963,6 +1999,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,function(c){
 function paintSet(){
   $("st-name").textContent=playerName()||"—";
   $("st-role").innerHTML=isAdmin()?'<span class="role">系統人員</span>':'<span class="role" style="color:var(--muted);font-weight:400">一般使用者</span>';
+  $("st-how").textContent=localStorage.getItem(GKEY)==="1"?"Google":"暱稱＋密碼";
   paintSync();
   $("adm").classList.toggle("hide",!isAdmin());
   if(isAdmin()&&playerName()&&!admLoaded)admLoad();
@@ -1995,6 +2032,7 @@ function admRender(us){
       (u.role==="admin"?' <span class="badge">系統人員</span>':"")+'</span>'+
       '<span class="st">'+(u.hands||0)+' 手 · '+acc+'</span>'+
       '<span class="mt">最後登入 '+esc(u.lastLogin||"—")+'　共 '+(u.logins||0)+' 次'+
+      (u.google?'　Google 登入':'')+
       '<br>練習 '+(u.days||0)+' 天　算牌 '+(u.count||0)+' 題'+
       (u.lastDay?'　最後練習 '+esc(u.lastDay):"")+'</span>';
     ul.appendChild(li);});
@@ -2086,6 +2124,120 @@ function closeGate(){
   $("gate").classList.add("hide");
   paint();renderChart();renderLog();cPaint();paintSet();
 }
+/* ═══ Google 登入 ═══
+   目的是「記錄跟著帳號」：用 Google 登入就不會因為忘記四位數密碼而失去練習記錄。
+   ID Token 一定要送到後端驗（前端自己解出來的身分誰都能偽造）；
+   後端驗過之後發一把 64 碼權杖，之後所有呼叫拿它當密碼用，跟四位數密碼同一條路。
+   空字串＝還沒設定 OAuth 用戶端，整塊不顯示，密碼登入照常運作。 */
+const GOOGLE_CLIENT_ID="";
+let gIdToken="";
+
+function googleInit(){
+  if(!GOOGLE_CLIENT_ID)return;
+  const sc=document.createElement("script");
+  sc.src="https://accounts.google.com/gsi/client";
+  sc.async=true;sc.defer=true;
+  sc.onload=function(){
+    try{
+      google.accounts.id.initialize({
+        client_id:GOOGLE_CLIENT_ID,
+        callback:googleCred,
+        auto_select:false,
+        cancel_on_tap_outside:true
+      });
+      google.accounts.id.renderButton($("g-gbtn"),
+        {theme:"filled_black",size:"large",shape:"rectangular",
+         text:"continue_with",locale:"zh-TW",width:300});
+      $("g-google").classList.remove("hide");
+    }catch(e){}
+  };
+  /* 載不到就當作沒有這個功能，密碼登入不受影響 */
+  document.head.appendChild(sc);
+}
+function googleCred(res){
+  if(!res||!res.credential)return;
+  gIdToken=res.credential;
+  const msg=$("g-msg");
+  msg.className="gmsg";msg.textContent="Google 驗證中…";
+  googleGo({});
+}
+/* extra 可帶 {name:…} 開新帳號，或 {link:…,linkpin:…} 綁既有帳號 */
+function googleGo(extra){
+  const params={action:"google",idt:gIdToken};
+  for(const k in extra)params[k]=extra[k];
+  jsonp(params,function(d){
+    if(d&&d.ok){googleDone(d);return;}
+    const e=d&&d.error;
+    if(e==="need_name"){
+      $("g-pw").classList.add("hide");$("g-google").classList.add("hide");
+      $("g-msg").textContent="";
+      $("g-nname").value=d.suggest||"";
+      $("g-new").classList.remove("hide");
+      return;
+    }
+    const box=$("g-new").classList.contains("hide")?$("g-msg"):$("g-nmsg");
+    box.className="gmsg";
+    box.textContent=e==="exists"?"這個暱稱已經有人用了，換一個"
+      :e==="already_linked"?"那個帳號已經綁過別的 Google 帳號了"
+      :e==="no_user"?"找不到這個暱稱"
+      :e==="bad_pin"?"原本的密碼不對"
+      :e==="bad_input"?"暱稱或密碼格式不對"
+      :e==="google_off"?"Google 登入還沒設定好"
+      :(e==="bad_token"||e==="expired"||e==="bad_aud")?"Google 驗證沒通過，請再試一次"
+      :"連不上伺服器，請檢查網路後再試";
+    $("g-ngo").disabled=false;
+  });
+}
+function googleDone(d){
+  /* 權杖就是之後的密碼，跟四位數密碼放同一個位置，後面所有呼叫都不用改 */
+  localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,d.token);
+  localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
+  localStorage.setItem(GKEY,"1");
+  admLoaded=false;gIdToken="";
+  applyRemote(d.days);applyCount(d.count);
+  const box=$("g-new").classList.contains("hide")?$("g-msg"):$("g-nmsg");
+  box.className="gmsg ok";
+  box.textContent=d.linked?"已綁定，記錄都在"
+    :d.created?"帳號建立完成"
+    :("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
+  setTimeout(function(){
+    $("g-new").classList.add("hide");$("g-pw").classList.remove("hide");
+    closeGate();
+  },700);
+}
+$("g-nmode").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;
+  $("g-nmode").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
+  const link=b.dataset.m==="link";
+  $("g-new-a").classList.toggle("hide",link);
+  $("g-new-b").classList.toggle("hide",!link);
+  $("g-nmsg").textContent="";$("g-nmsg").className="gmsg";
+};
+$("g-ngo").onclick=function(){
+  const link=$("g-nmode").querySelector('[data-m="link"]').getAttribute("aria-selected")==="true";
+  const m=$("g-nmsg");m.className="gmsg";
+  if(link){
+    const nm=$("g-lname").value.trim(),pin=$("g-lpin").value.trim();
+    if(!nm){m.textContent="請輸入原本的暱稱";return;}
+    if(!/^\d{4}$/.test(pin)){m.textContent="密碼要剛好四位數字";return;}
+    this.disabled=true;m.textContent="綁定中…";
+    googleGo({link:nm,linkpin:pin});
+  }else{
+    const nm=$("g-nname").value.trim();
+    if(!nm){m.textContent="請輸入暱稱";return;}
+    this.disabled=true;m.textContent="建立中…";
+    googleGo({name:nm});
+  }
+};
+$("g-ncancel").onclick=function(){
+  gIdToken="";
+  $("g-new").classList.add("hide");
+  $("g-pw").classList.remove("hide");
+  if(GOOGLE_CLIENT_ID)$("g-google").classList.remove("hide");
+  $("g-msg").textContent="";$("g-msg").className="gmsg";
+  $("g-ngo").disabled=false;
+};
+
 /* 登入與註冊分開：打錯字就不會默默生出一個新帳號，記錄也不會憑空消失 */
 let gmode="login";
 $("g-mode").onclick=function(e){
@@ -2119,6 +2271,7 @@ function gateGo(){
     }
     localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,pin);
     localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
+    localStorage.removeItem(GKEY);
     admLoaded=false;
     applyRemote(d.days);applyCount(d.count);
     msg.className="gmsg ok";
@@ -2133,7 +2286,8 @@ $("g-go").onclick=gateGo;
 });
 $("switch").onclick=function(){
   syncQueue(true);
-  localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);localStorage.removeItem(RKEY);
+  localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);
+  localStorage.removeItem(RKEY);localStorage.removeItem(GKEY);
   admLoaded=false;$("adm").classList.add("hide");
   $("g-name").value="";$("g-pin").value="";
   $("g-msg").textContent="";$("g-msg").className="gmsg";
@@ -2170,6 +2324,7 @@ if("serviceWorker" in navigator){
   };
 })();
 
+googleInit();
 setInterval(function(){syncQueue();},20000);
 cload();loadDecks();
 load().then(function(){

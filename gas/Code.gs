@@ -17,7 +17,7 @@ var SH_USERS = '帳號';
 var SH_LOGIN = '登入記錄';
 var HEAD_HANDS = ['時間', '日期', '練習者', '來源', '手牌', '莊家明牌', '你選', '正解', '對錯', '秒數'];
 var HEAD_DAILY = ['日期', '練習者', '手數', '正確', '正確率', '算牌題數', '算牌正確'];
-var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用', '角色', '登入次數', '最後登入'];
+var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用', '角色', '登入次數', '最後登入', 'Google ID'];
 var HEAD_LOGIN = ['時間', '暱稱', '角色'];
 
 var SRC_COUNT = '算牌';     // 手牌記錄的「來源」欄是這個值，就計入算牌題數而不是策略手數
@@ -27,7 +27,12 @@ var LOGIN_KEEP = 2000;      // 登入記錄只留最近這麼多列
 var TZ = 'Asia/Taipei';
 
 // 帳號表欄位位置（1-based），改欄位順序時這裡要一起改
-var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6, U_LASTLOGIN = 7;
+var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6, U_LASTLOGIN = 7,
+    U_GID = 8;
+
+// Google 登入用的 OAuth 用戶端 ID。這不是密鑰，它本來就會出現在前端網頁原始碼裡。
+// 空字串＝Google 登入關閉，前端不會顯示那顆按鈕。
+var GOOGLE_CLIENT_ID = '';
 
 /**
  * 放在最前面：編輯器預設會選第一個函式，所以第一個函式必須無參數且可安全執行。
@@ -157,6 +162,82 @@ function findUser(ss, name) {
         sh: sh, row: i + 2,
         hash: String(v[i][U_HASH - 1]),
         role: String(v[i][U_ROLE - 1] || 'user'),
+        logins: Number(v[i][U_LOGINS - 1]) || 0,
+        gid: String(v[i][U_GID - 1] || '')
+      };
+    }
+  }
+  return { sh: sh, row: -1 };
+}
+
+/** 四位數字密碼，或 Google 登入發的 64 碼權杖。兩者都只存雜湊，驗證方式一模一樣。 */
+function isSecret(s) {
+  return /^\d{4}$/.test(s) || /^[0-9a-f]{64}$/.test(s);
+}
+
+function newToken() {
+  return (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+}
+
+/**
+ * 驗證帳號。createIfMissing=true 時，暱稱不存在就直接建立（等於註冊）。
+ * 回傳 {ok, created, name, role, row, sh, logins, gid}
+ * 或 {ok:false, error:'bad_input'|'no_user'|'bad_pin'}
+ */
+function auth(ss, name, pin, createIfMissing) {
+  name = cleanName(name);
+  pin = String(pin || '');
+  if (!name || !isSecret(pin)) return { ok: false, error: 'bad_input' };
+  var u = findUser(ss, name);
+  var h = hashPin(name, pin);
+  if (u.row < 0) {
+    if (!createIfMissing) return { ok: false, error: 'no_user' };
+    u.sh.appendRow([name, h, nowText(), nowText(), 'user', 0, '', '']);
+    return { ok: true, created: true, name: name, role: 'user', row: u.sh.getLastRow(), sh: u.sh, logins: 0 };
+  }
+  if (u.hash !== h) return { ok: false, error: 'bad_pin' };
+  u.sh.getRange(u.row, U_USED).setValue(nowText());
+  return { ok: true, created: false, name: name, role: u.role, row: u.row, sh: u.sh,
+           logins: u.logins, gid: u.gid };
+}
+
+/* ═══════════ Google 登入 ═══════════ */
+
+/**
+ * 驗證前端送來的 Google ID Token。
+ *
+ * 一定要在後端驗：前端自己解出來的 sub 誰都能偽造。
+ * 用 tokeninfo 端點驗，不必自己處理 JWT 簽章與金鑰輪替。
+ * ⚠️ 這支用到 UrlFetchApp，所以指令碼需要 script.external_request 權限，
+ *    加上這個權限之後擁有者必須重新授權一次，否則 /exec 會回授權錯誤。
+ */
+function verifyGoogle(idt) {
+  if (!GOOGLE_CLIENT_ID) return { ok: false, error: 'google_off' };
+  idt = String(idt || '');
+  if (idt.length < 20 || idt.length > 4000) return { ok: false, error: 'bad_token' };
+  var res = UrlFetchApp.fetch(
+    'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idt),
+    { muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) return { ok: false, error: 'bad_token' };
+  var d;
+  try { d = JSON.parse(res.getContentText()); } catch (e) { return { ok: false, error: 'bad_token' }; }
+  if (String(d.aud) !== GOOGLE_CLIENT_ID) return { ok: false, error: 'bad_aud' };
+  if (Number(d.exp) * 1000 < new Date().getTime()) return { ok: false, error: 'expired' };
+  if (!d.sub) return { ok: false, error: 'bad_token' };
+  var sug = String(d.given_name || d.name || String(d.email || '').split('@')[0] || '').trim();
+  return { ok: true, sub: String(d.sub), suggest: sug.substring(0, 12) };
+}
+
+function findByGoogle(ss, sub) {
+  var sh = sheetOf(ss, SH_USERS, HEAD_USERS);
+  var last = sh.getLastRow();
+  if (last < 2) return { sh: sh, row: -1 };
+  var v = sh.getRange(2, 1, last - 1, HEAD_USERS.length).getValues();
+  for (var i = 0; i < v.length; i++) {
+    if (String(v[i][U_GID - 1]) === sub && sub) {
+      return {
+        sh: sh, row: i + 2, name: String(v[i][0]),
+        role: String(v[i][U_ROLE - 1] || 'user'),
         logins: Number(v[i][U_LOGINS - 1]) || 0
       };
     }
@@ -164,24 +245,11 @@ function findUser(ss, name) {
   return { sh: sh, row: -1 };
 }
 
-/**
- * 驗證帳號。createIfMissing=true 時，暱稱不存在就直接建立（等於註冊）。
- * 回傳 {ok, created, name, role, row, sh} 或 {ok:false, error:'bad_input'|'no_user'|'bad_pin'}
- */
-function auth(ss, name, pin, createIfMissing) {
-  name = cleanName(name);
-  pin = String(pin || '');
-  if (!name || !/^\d{4}$/.test(pin)) return { ok: false, error: 'bad_input' };
-  var u = findUser(ss, name);
-  var h = hashPin(name, pin);
-  if (u.row < 0) {
-    if (!createIfMissing) return { ok: false, error: 'no_user' };
-    u.sh.appendRow([name, h, nowText(), nowText(), 'user', 0, '']);
-    return { ok: true, created: true, name: name, role: 'user', row: u.sh.getLastRow(), sh: u.sh, logins: 0 };
-  }
-  if (u.hash !== h) return { ok: false, error: 'bad_pin' };
-  u.sh.getRange(u.row, U_USED).setValue(nowText());
-  return { ok: true, created: false, name: name, role: u.role, row: u.row, sh: u.sh, logins: u.logins };
+/** 發一把新權杖給這一列並回傳明文（只有這一次看得到，之後表上只有雜湊） */
+function issueToken(sh, row, name) {
+  var tok = newToken();
+  sh.getRange(row, U_HASH).setValue(hashPin(name, tok));
+  return tok;
 }
 
 /** 管理動作共用：驗身分 + 檢查角色。前端的角色只是快取，這裡才是真的關卡。 */
@@ -273,6 +341,7 @@ function adminUsers(ss) {
       // 舊帳號沒有「最後登入」，退回用「最後使用」
       lastLogin: stampOf(v[j][U_LASTLOGIN - 1] || v[j][U_USED - 1], off),
       logins: Number(v[j][U_LOGINS - 1]) || 0,
+      google: !!String(v[j][U_GID - 1] || ''),
       hands: g2.hands, correct: g2.correct,
       count: g2.count, ccorrect: g2.ccorrect,
       days: g2.days, lastDay: g2.lastDay,
@@ -512,7 +581,7 @@ function doGet(e) {
     if (!nn || !/^\d{4}$/.test(np)) return out({ ok: false, error: 'bad_input' }, cb);
     var ex = findUser(ss, nn);
     if (ex.row > 0) return out({ ok: false, error: 'exists' }, cb);
-    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '']);
+    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '', '']);
     return out({ ok: true, name: nn }, cb);
   }
 
@@ -525,6 +594,58 @@ function doGet(e) {
     if (t.row < 0) return out({ ok: false, error: 'no_user' }, cb);
     t.sh.getRange(t.row, U_HASH).setValue(hashPin(tn, tp));
     return out({ ok: true, name: tn }, cb);
+  }
+
+  /**
+   * Google 登入。三種情況一支處理完：
+   *   已綁過      → 直接登入，發一把新權杖
+   *   沒綁過＋name→ 開新帳號
+   *   沒綁過＋link→ 把這個 Google 帳號綁到既有的暱稱＋密碼帳號（記錄就跟著過來）
+   *   沒綁過也沒給→ 回 need_name，前端再問一次
+   */
+  if (p.action === 'google') {
+    var glk = LockService.getScriptLock();
+    try { glk.waitLock(20000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      var g = verifyGoogle(p.idt);
+      if (!g.ok) return out(g, cb);
+
+      var hit = findByGoogle(ss, g.sub);
+      if (hit.row > 0) {
+        var tk = issueToken(hit.sh, hit.row, hit.name);
+        hit.sh.getRange(hit.row, U_USED).setValue(nowText());
+        markLogin(ss, hit);
+        var st1 = daysOf(ss, hit.name);
+        return out({ ok: true, created: false, name: hit.name, role: hit.role,
+                     token: tk, days: st1.days, count: st1.count }, cb);
+      }
+
+      // 綁定既有帳號：要能證明那個帳號是他的，所以照樣驗一次密碼
+      if (p.link) {
+        var la = auth(ss, p.link, p.linkpin, false);
+        if (!la.ok) return out({ ok: false, error: la.error }, cb);
+        if (la.gid) return out({ ok: false, error: 'already_linked' }, cb);
+        la.sh.getRange(la.row, U_GID).setValue(g.sub);
+        var tk2 = issueToken(la.sh, la.row, la.name);
+        markLogin(ss, la);
+        var st2 = daysOf(ss, la.name);
+        return out({ ok: true, created: false, linked: true, name: la.name, role: la.role,
+                     token: tk2, days: st2.days, count: st2.count }, cb);
+      }
+
+      var nn2 = cleanName(p.name);
+      if (!nn2) return out({ ok: false, error: 'need_name', suggest: g.suggest }, cb);
+      if (findUser(ss, nn2).row > 0) return out({ ok: false, error: 'exists' }, cb);
+      var sh2 = sheetOf(ss, SH_USERS, HEAD_USERS);
+      var tok2 = newToken();
+      sh2.appendRow([nn2, hashPin(nn2, tok2), nowText(), nowText(), 'user', 0, '', g.sub]);
+      var made = { sh: sh2, row: sh2.getLastRow(), name: nn2, role: 'user', logins: 0 };
+      markLogin(ss, made);
+      return out({ ok: true, created: true, name: nn2, role: 'user',
+                   token: tok2, days: [], count: [] }, cb);
+    } finally {
+      glk.releaseLock();
+    }
   }
 
   // 清自己的算牌記錄。只要帳密對就能清自己的，不需要系統人員。
