@@ -57,18 +57,21 @@ header{padding:calc(20px + env(safe-area-inset-top)) 0 0}
 /* 中文標題不用像英文那樣靠字重撐場面，給字距跟一點大小就夠 */
 h1{font-size:23px;font-weight:700;margin:0;line-height:1.2;letter-spacing:.06em}
 h1 em{font-style:normal;color:var(--brass);letter-spacing:.02em;padding:0 1px}
-.tag{font-family:var(--sans);font-size:13px;color:var(--muted);white-space:nowrap;letter-spacing:.04em}
 
 /* 桌規收成一行，點開才展開細節 */
 .rules{border-bottom:1px solid var(--hair-2)}
-.rules>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
-  justify-content:space-between;padding:11px 0;-webkit-user-select:none;user-select:none}
+/* 規則靠左、莊家優勢靠右：那是推算出來的數字，不是規則之一，黏在一起會被當成同一串 */
+.rules>summary{list-style:none;cursor:pointer;display:flex;align-items:center;
+  gap:4px 14px;flex-wrap:wrap;padding:11px 0;-webkit-user-select:none;user-select:none}
 .rules>summary::-webkit-details-marker{display:none}
-.rules .rsum{font-size:13.5px;color:var(--muted);line-height:1.5}
-.rules .redge{font-family:var(--mono);font-size:12.5px;color:var(--brass);white-space:nowrap}
+.rules .rsum{flex:1 1 auto;min-width:0;font-size:13.5px;color:var(--muted);line-height:1.6}
+.rules .rsum b{color:var(--text);font-weight:600}   /* 副數是唯一會變的，讓它跳出來 */
+.rules .redge{font-family:var(--mono);font-size:12.5px;color:var(--brass);
+  white-space:nowrap;margin-left:auto}
 .rules[open] .rsum,.rules[open] .redge{display:none}
 .rules[open]>summary::before{content:"收起桌規";font-size:13.5px;color:var(--text)}
-.rules>summary::after{content:"＋";font-family:var(--mono);font-size:15px;color:var(--muted);margin-left:auto}
+.rules>summary::after{content:"＋";font-family:var(--mono);font-size:15px;
+  color:var(--muted);flex:0 0 14px;text-align:center}
 .rules[open]>summary::after{content:"−"}
 .rules .ruleset{border-bottom:0;margin-top:0;padding-top:0}
 .rules .hint{margin:4px 0 14px}
@@ -541,12 +544,11 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 <header>
   <div class="brand">
     <h1>戰勝<em>21</em>點</h1>
-    <span class="tag">澳門 · 低限桌</span>
   </div>
   <!-- 桌規每個分頁都在最上面，攤開來會吃掉半個螢幕；收成一行，要核對再點開 -->
   <details class="rules">
     <summary>
-      <span class="rsum" id="rs-sum">8 副 · S17 · BJ 3:2 · DAS · 不可投降</span>
+      <span class="rsum" id="rs-sum"><b>8 副</b> · S17 · BJ 3:2 · DAS · 不可投降</span>
       <span class="redge" id="rs-edge">莊優 0.43%</span>
     </summary>
     <div class="ruleset">
@@ -994,7 +996,7 @@ function loadDecks(){
 }
 function applyDecks(){
   const b=DBASE[tblDecks].toFixed(2);
-  $("rs-sum").textContent=tblDecks+" 副 · S17 · BJ 3:2 · DAS · 不可投降";
+  $("rs-sum").innerHTML="<b>"+tblDecks+" 副</b> · S17 · BJ 3:2 · DAS · 不可投降";
   $("rs-edge").textContent="莊優 "+b+"%";
   $("rl-decks").textContent=tblDecks+" 副";
   $("rl-edge").textContent="≈ "+b+"%";
