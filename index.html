@@ -54,8 +54,24 @@ b,strong{font-weight:700}
 header{padding:calc(20px + env(safe-area-inset-top)) 0 0}
 .brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
   padding-bottom:11px;border-bottom:1px solid var(--hair-2)}
-h1{font-size:19px;font-weight:600;margin:0;line-height:1.3}
-h1 em{font-style:normal;color:var(--brass)}
+/* 中文標題不用像英文那樣靠字重撐場面，給字距跟一點大小就夠 */
+h1{font-size:23px;font-weight:700;margin:0;line-height:1.2;letter-spacing:.06em}
+h1 em{font-style:normal;color:var(--brass);letter-spacing:.02em;padding:0 1px}
+.tag{font-family:var(--sans);font-size:13px;color:var(--muted);white-space:nowrap;letter-spacing:.04em}
+
+/* 桌規收成一行，點開才展開細節 */
+.rules{border-bottom:1px solid var(--hair-2)}
+.rules>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  justify-content:space-between;padding:11px 0;-webkit-user-select:none;user-select:none}
+.rules>summary::-webkit-details-marker{display:none}
+.rules .rsum{font-size:13.5px;color:var(--muted);line-height:1.5}
+.rules .redge{font-family:var(--mono);font-size:12.5px;color:var(--brass);white-space:nowrap}
+.rules[open] .rsum,.rules[open] .redge{display:none}
+.rules[open]>summary::before{content:"收起桌規";font-size:13.5px;color:var(--text)}
+.rules>summary::after{content:"＋";font-family:var(--mono);font-size:15px;color:var(--muted);margin-left:auto}
+.rules[open]>summary::after{content:"−"}
+.rules .ruleset{border-bottom:0;margin-top:0;padding-top:0}
+.rules .hint{margin:4px 0 14px}
 .ruleset{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--hair-2);
   padding:2px 0 11px;margin-top:11px}
 .rl{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--hair)}
@@ -171,10 +187,12 @@ nav button[aria-selected="true"]::after{transform:scaleX(1)}
 .epre .eact{display:flex;gap:6px;padding:12px 12px 0;flex-wrap:wrap}
 .epre .eact button{flex:1;min-width:150px}
 
-.gauge{display:flex;align-items:center;gap:10px;padding:9px 16px;
+/* SHOE / THINK / TIME 三組標籤在 320px 的手機上塞不下，允許換行而不是撐破版面 */
+.gauge{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 13px;
   border-top:1px solid rgba(237,235,230,.12);background:rgba(0,0,0,.22)}
 .gauge .label{margin:0;white-space:nowrap}
-.bar{flex:1;height:4px;background:rgba(237,235,230,.16);border-radius:2px;overflow:hidden}
+.bar{flex:1 1 60px;min-width:40px;height:4px;background:rgba(237,235,230,.16);
+  border-radius:2px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--brass);transition:width .35s}
 .gauge .pct{font-family:var(--mono);font-size:13px;color:var(--muted)}
 .gauge .sep{width:1px;height:14px;background:var(--hair-2);flex:0 0 1px}
@@ -468,18 +486,25 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 <div class="wrap">
 <header>
   <div class="brand">
-    <h1>Blackjack <em>Strategy Trainer</em></h1>
-    <span class="label">Macau · Low limit</span>
+    <h1>戰勝<em>21</em>點</h1>
+    <span class="tag">澳門 · 低限桌</span>
   </div>
-  <div class="ruleset">
-    <div class="rl"><span>牌盒</span><span>8 副</span></div>
-    <div class="rl"><span>莊家軟 17</span><span>停牌 S17</span></div>
-    <div class="rl"><span>Blackjack</span><span>3 : 2</span></div>
-    <div class="rl"><span>分牌後加倍</span><span>可 DAS</span></div>
-    <div class="rl"><span>投降</span><span>不可</span></div>
-    <div class="rl"><span>理論莊家優勢</span><span>≈ 0.43%</span></div>
-  </div>
-  <p class="hint">上桌前核對桌面規則。若標示 Dealer hits soft 17 或 Blackjack pays 6:5，策略表與優勢都會改變。</p>
+  <!-- 桌規每個分頁都在最上面，攤開來會吃掉半個螢幕；收成一行，要核對再點開 -->
+  <details class="rules">
+    <summary>
+      <span class="rsum">8 副 · S17 · BJ 3:2 · DAS · 不可投降</span>
+      <span class="redge">莊優 0.43%</span>
+    </summary>
+    <div class="ruleset">
+      <div class="rl"><span>牌盒</span><span>8 副</span></div>
+      <div class="rl"><span>莊家軟 17</span><span>停牌 S17</span></div>
+      <div class="rl"><span>Blackjack</span><span>3 : 2</span></div>
+      <div class="rl"><span>分牌後加倍</span><span>可 DAS</span></div>
+      <div class="rl"><span>投降</span><span>不可</span></div>
+      <div class="rl"><span>理論莊家優勢</span><span>≈ 0.43%</span></div>
+    </div>
+    <p class="hint">上桌前核對桌面規則。若標示 Dealer hits soft 17 或 Blackjack pays 6:5，策略表與優勢都會改變。</p>
+  </details>
 </header>
 
 <nav>
@@ -627,6 +652,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
     <div class="gbar"><i id="c-goalbar" style="width:0%"></i></div>
     <div class="goalsub" id="c-gsub">最佳連續 0　·　平均 —</div>
   </div>
+  <button class="next2" id="c-clear" style="margin-top:10px">清除算牌記錄</button>
 
   <details class="fold">
     <summary>Hi-Lo 牌值</summary>
@@ -1575,18 +1601,23 @@ function csave(){try{localStorage.setItem(CSTORE,JSON.stringify(cstats));}catch(
 
 function cPaint(){
   const d=cday(),pc=d.q?Math.round(d.c/d.q*100):0,perfect=d.q>0&&d.c===d.q;
+  const hit=d.q>=CGOAL,wrong=d.q-d.c;
   $("c-q").textContent=d.q;
   const av=$("c-acc");
   av.textContent=d.q?pc+"%":"—";
   av.className="v"+(perfect&&d.q?" up":(d.q&&pc<90?" down":""));
   $("c-streak").textContent=cstats.streak||0;
-  $("c-gsub").textContent="最佳連續 "+(cstats.best||0)+"　·　平均 "+
-    (d.tn?(d.t/d.tn).toFixed(1)+"s":"—");
-  $("c-todayq").innerHTML=d.q+"<em> / "+CGOAL+" 題</em>";
+  /* 練過頭顯示「39 / 30 題」很怪；達標之後就不要再秀分母了 */
+  $("c-todayq").innerHTML=hit?(d.q+"<em> 題 · 已達標</em>")
+                             :(d.q+"<em> / "+CGOAL+" 題</em>");
   $("c-todayacc").textContent=d.q?("正確率 "+pc+"%"+(perfect?" · 全對":"")):"正確率 —";
   const bar=$("c-goalbar");
   bar.style.width=Math.min(100,Math.round(d.q/CGOAL*100))+"%";
-  bar.classList.toggle("done",d.q>=CGOAL&&perfect);   /* 達標且全對才轉綠 */
+  bar.classList.toggle("done",hit&&perfect);          /* 達標且全對才轉綠 */
+  /* 目標是「準確率 100%」，所以達標之後真正要看的是還錯幾題 */
+  $("c-gsub").textContent=
+    (d.q?((wrong?("還錯 "+wrong+" 題"):"全對")+"　·　"):"")+
+    "最佳連續 "+(cstats.best||0)+"　·　平均 "+(d.tn?(d.t/d.tn).toFixed(1)+"s":"—");
 }
 function cOpts(){
   const box=$("c-opts");box.innerHTML="";
@@ -1798,6 +1829,29 @@ $("c-input").onclick=function(e){
   if(b.dataset.v!==undefined){cGrade(parseInt(b.dataset.v,10));return;}
   if(b.dataset.k!==undefined)cPress(b.dataset.k);};
 $("c-next").onclick=cNext;
+/* 只清算牌，策略練習的記錄不動。要點兩次，免得練到一半手滑全沒了。 */
+$("c-clear").onclick=function(){
+  const b=this;
+  if(b.dataset.arm!=="1"){
+    b.dataset.arm="1";b.textContent="再按一次就把算牌記錄全部刪掉";
+    setTimeout(function(){b.dataset.arm="";b.textContent="清除算牌記錄";},4000);
+    return;
+  }
+  b.dataset.arm="";b.disabled=true;b.textContent="清除中…";
+  /* 佇列裡還沒上傳的算牌題目要一起丟掉，不然清完下一次同步又被推回雲端 */
+  try{
+    const q=JSON.parse(localStorage.getItem(QKEY)||"[]").filter(function(r){return r[1]!=="算牌";});
+    localStorage.setItem(QKEY,JSON.stringify(q));
+  }catch(e){}
+  cstats={q:0,correct:0,streak:0,best:0,days:{}};
+  csave();cPaint();cNext();
+  function fin(txt){b.disabled=false;b.textContent=txt;
+    setTimeout(function(){b.textContent="清除算牌記錄";},2500);}
+  if(!playerName()||!playerPin()){fin("已清除");return;}
+  /* 雲端也要清，否則重新登入時 applyCount 會把舊數字拉回來 */
+  jsonp({action:"clear_count",name:playerName(),pin:playerPin()},function(d){
+    fin((d&&d.ok)?"已清除":"本機已清除，雲端沒連上");});
+};
 
 /* ═══ 凱利 ═══ */
 const BJ_VAR=1.32;      /* 21點每一單位下注的變異數，用來把優勢換算成該押的資金比例 */

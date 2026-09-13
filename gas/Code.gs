@@ -418,6 +418,39 @@ function rebuildDaily(ss) {
   return rows.length;
 }
 
+/**
+ * 清掉某個人的算牌記錄：手牌記錄刪掉他來源是「算牌」的列，每日統計的算牌兩欄歸零。
+ * 策略練習的手數完全不動。手牌記錄也真的刪，否則 rebuildDaily 會把數字算回來。
+ */
+function clearCount(ss, name) {
+  var hands = sheetOf(ss, SH_HANDS, HEAD_HANDS);
+  var last = hands.getLastRow(), removed = 0;
+  if (last > 1) {
+    var v = hands.getRange(2, 1, last - 1, HEAD_HANDS.length).getValues();
+    var keep = [];
+    for (var i = 0; i < v.length; i++) {
+      if (String(v[i][2]) === name && String(v[i][3]) === SRC_COUNT) { removed++; continue; }
+      keep.push(v[i]);
+    }
+    if (removed) {
+      hands.getRange(2, 1, last - 1, HEAD_HANDS.length).clearContent();
+      if (keep.length) hands.getRange(2, 1, keep.length, HEAD_HANDS.length).setValues(keep);
+    }
+  }
+
+  var d = sheetOf(ss, SH_DAILY, HEAD_DAILY);
+  var dl = d.getLastRow();
+  if (dl > 1) {
+    var dv = d.getRange(2, 1, dl - 1, HEAD_DAILY.length).getValues(), touched = false;
+    for (var j = 0; j < dv.length; j++) {
+      if (String(dv[j][1]) !== name) continue;
+      if ((Number(dv[j][5]) || 0) || (Number(dv[j][6]) || 0)) { dv[j][5] = 0; dv[j][6] = 0; touched = true; }
+    }
+    if (touched) d.getRange(2, 1, dl - 1, HEAD_DAILY.length).setValues(dv);
+  }
+  return removed;
+}
+
 /* ═══════════ 讀取（JSONP）═══════════ */
 
 function doGet(e) {
@@ -492,6 +525,19 @@ function doGet(e) {
     if (t.row < 0) return out({ ok: false, error: 'no_user' }, cb);
     t.sh.getRange(t.row, U_HASH).setValue(hashPin(tn, tp));
     return out({ ok: true, name: tn }, cb);
+  }
+
+  // 清自己的算牌記錄。只要帳密對就能清自己的，不需要系統人員。
+  if (p.action === 'clear_count') {
+    var ca = auth(ss, p.name, p.pin, false);
+    if (!ca.ok) return out(ca, cb);
+    var lk3 = LockService.getScriptLock();
+    try { lk3.waitLock(30000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      return out({ ok: true, removed: clearCount(ss, ca.name) }, cb);
+    } finally {
+      lk3.releaseLock();
+    }
   }
 
   // 診斷用：時區錯了每日統計會整個切錯天，出問題時先看這個
