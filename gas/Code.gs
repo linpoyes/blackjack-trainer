@@ -51,7 +51,19 @@ function setup() {
       ss.deleteSheet(all[i]);
     }
   }
-  return '完成：' + ss.getSheets().map(function (s) { return s.getName(); }).join(' / ');
+  // 順便碰一下外部連線：Google 登入要用 UrlFetchApp 驗 ID Token。
+  // 不在這裡實際呼叫的話，編輯器不會跳出「連線至外部服務」的授權要求，
+  // 之後第一次按 Google 登入才會發現沒授權。
+  var net;
+  try {
+    UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=x',
+      { muteHttpExceptions: true });
+    net = '外部連線已授權';
+  } catch (e) {
+    net = '外部連線尚未授權（' + e + '）';
+  }
+  return '完成：' + ss.getSheets().map(function (s) { return s.getName(); }).join(' / ') +
+    '｜' + net;
 }
 
 function ymd(v) {
