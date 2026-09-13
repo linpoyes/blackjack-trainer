@@ -35,6 +35,12 @@
   --hit:#C1483C;--stand:#2E8B62;--dbl:#C08B2A;--split:#3D74A8;--card-red:#B3332B;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 練習時手指常常點歪，iOS 會把「點兩下」判成放大手勢，畫面整個跳掉。
+   manipulation 只關掉雙擊縮放，雙指縮放與捲動都保留，不影響要放大看策略表的人。 */
+html,body{touch-action:manipulation}
+/* 長按介面元件會跳出選字放大鏡，答題時很干擾；說明文字仍可選取複製 */
+button,.card,.metric,.label,nav,.seg,.acts,.pchips,.kpad,.gauge,.bars,.bdays,h2,.badge{
+  -webkit-user-select:none;user-select:none}
 html{background:var(--bg);-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:var(--sans);
@@ -304,8 +310,98 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .reset{background:none;border:0;color:var(--hit);cursor:pointer;font-size:13.5px;padding:0;
   font-family:inherit;text-decoration:underline;text-underline-offset:3px}
 
+/* ── 算牌 ── */
+.cstage{display:flex;gap:8px;justify-content:center;align-items:center;
+  min-height:118px;flex-wrap:wrap;padding:8px 0}
+.cstage .card{animation:pop .12s ease-out both}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.cstage .big-num{font-family:var(--mono);font-size:46px;font-weight:600;color:var(--brass);line-height:1}
+.cscene{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair);
+  border:1px solid var(--hair);border-radius:2px;margin:10px 0 2px}
+.cstage .cscene{flex:1 0 100%}
+.cscene div{background:rgba(0,0,0,.25);padding:11px 8px;text-align:center}
+.cscene .label{display:block;margin-bottom:6px}
+.cscene b{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--text)}
+.cdisp{border:1px solid var(--hair-2);border-radius:3px;background:var(--surface);
+  padding:12px;text-align:center;font-family:var(--mono);font-size:28px;font-weight:600;
+  margin-bottom:8px;min-height:56px;letter-spacing:.04em;line-height:1.1}
+.cdisp.ph{color:var(--muted);font-size:15px;font-weight:400;letter-spacing:.14em}
+.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.kpad button{border:1px solid var(--hair-2);background:var(--surface-2);color:var(--text);
+  border-radius:3px;padding:15px 0;font-family:var(--mono);font-size:21px;font-weight:500;
+  cursor:pointer;transition:background .14s,transform .08s}
+.kpad button:active{transform:translateY(1px);background:#121618}
+.kpad button.fn{font-size:15px;color:var(--muted);background:transparent;font-family:inherit}
+.acts.three{grid-template-columns:repeat(3,1fr)}
+.acts.three .act{font-family:var(--mono);font-size:22px;font-weight:600;padding:20px 4px}
+.hilo{width:100%;border-collapse:collapse;margin-top:10px}
+.hilo td{height:46px}
+.hilo td.v{font-size:15px;color:var(--text);text-align:right;padding-right:14px;width:120px;
+  font-family:var(--mono);letter-spacing:.12em;border-right:1px solid var(--hair-2)}
+.hilo td.c{font-family:var(--mono);font-size:16px;color:#F2F0EB;padding-left:14px;text-align:left}
+.hilo tr.p td.c{background:var(--stand)}
+.hilo tr.z td.c{background:var(--surface-2);color:var(--muted)}
+.hilo tr.m td.c{background:var(--hit)}
+.formula{font-family:var(--mono);font-size:15px;text-align:center;padding:15px 10px;
+  background:var(--surface);border:1px solid var(--hair);border-radius:2px;margin:12px 0;
+  line-height:2;-webkit-user-select:text;user-select:text}
+.formula em{font-style:normal;color:var(--brass)}
+.formula .sm{font-size:13px;color:var(--muted)}
+
+/* ── 凱利 ── */
+.kbox{border:1px solid var(--hair);border-radius:2px;background:var(--surface);padding:6px 16px 16px}
+.krow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;
+  border-bottom:1px solid var(--hair)}
+.krow:last-child{border-bottom:0}
+.krow .label{margin:0}
+.kin{width:140px;padding:9px 11px;border:1px solid var(--hair-2);border-radius:3px;
+  background:var(--bg);color:var(--text);font-family:var(--mono);font-size:16px;text-align:right}
+.kin:focus{outline:none;border-color:var(--brass)}
+.step{display:flex;align-items:center;border:1px solid var(--hair-2);border-radius:3px;overflow:hidden}
+.step button{width:44px;padding:9px 0;background:var(--surface-2);border:0;color:var(--text);
+  font-family:var(--mono);font-size:19px;cursor:pointer}
+.step button:active{background:#121618}
+.step span{min-width:56px;text-align:center;font-family:var(--mono);font-size:17px;font-weight:600}
+.kout{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px;
+  border:1px solid var(--hair);border-radius:2px;background:var(--bg)}
+.kout div{padding:12px 6px;text-align:center;border-right:1px solid var(--hair)}
+.kout div:last-child{border-right:0}
+.kout .v{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.15}
+.kout .k{font-family:var(--mono);font-size:9px;letter-spacing:.07em;color:var(--muted);
+  margin-top:5px;text-transform:uppercase}
+.kout .v.neg{color:var(--hit)}
+.kout .v.go{color:var(--stand)}
+
+/* ── 設定 ── */
+.setblk{border:1px solid var(--hair);border-radius:2px;background:var(--surface);
+  padding:11px 16px;margin-bottom:10px}
+.setblk .r{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:8px 0;font-size:15px;border-bottom:1px solid var(--hair)}
+.setblk .r:last-child{border-bottom:0}
+.setblk .r span:first-child{color:var(--muted)}
+.setblk .r span:last-child{font-family:var(--mono)}
+.badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:2px 7px;
+  border-radius:2px;background:var(--brass);color:#16191B;font-weight:600;vertical-align:1px}
+.ulist{list-style:none;padding:0;margin:10px 0 0}
+.ulist li{padding:12px 0;border-bottom:1px solid var(--hair);display:grid;
+  grid-template-columns:1fr auto;gap:5px 12px;font-size:15px;cursor:pointer}
+.ulist li:active{background:var(--surface)}
+.ulist .nm{font-weight:600}
+.ulist .nm .badge{margin-left:7px}
+.ulist .st{font-family:var(--mono);font-size:13.5px;color:var(--muted);text-align:right;white-space:nowrap}
+.ulist .mt{font-family:var(--mono);font-size:12.5px;color:var(--muted);grid-column:1/3;line-height:1.65}
+.ulist li.none,.ulist li.load{color:var(--muted);grid-template-columns:1fr;cursor:default}
+.ulist li.upin{display:flex;gap:7px;align-items:center;padding:10px 0 13px;cursor:default;
+  background:var(--surface);animation:slide .16s ease-out both}
+.ulist li.upin input{flex:1;min-width:0}
+.ulist li.upin button{white-space:nowrap;padding:9px 15px;border:1px solid var(--hair-2);
+  border-radius:3px;background:var(--surface-2);color:var(--text);font-family:inherit;
+  font-size:14px;cursor:pointer}
+
 @media (max-width:400px){
   .wrap{padding:0 14px}
+  .cscene b{font-size:19px}
+  .kin{width:118px}
   .card{width:64px;height:92px}.card .cp{font-size:33px}
   .acts{gap:6px}.act{font-size:15px}
   .metric .v{font-size:23px}
@@ -347,8 +443,10 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 <nav>
   <button id="tab-drill" aria-selected="true">查表檢討</button>
   <button id="tab-sim" aria-selected="false">實戰模擬</button>
+  <button id="tab-count" aria-selected="false">算牌</button>
   <button id="tab-chart" aria-selected="false">策略表</button>
   <button id="tab-log" aria-selected="false">練習記錄</button>
+  <button id="tab-set" aria-selected="false">設定</button>
 </nav>
 
 <!-- ══ DRILL / REVIEW ══ -->
@@ -441,6 +539,99 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <p class="note">模擬過程不打斷你，一手結算後列出每個打錯的決定。淨額以「單位」計，一單位＝你的最小注碼。</p>
 </section>
 
+<!-- ══ COUNT ══ -->
+<section id="view-count" class="hide">
+  <div class="metrics five">
+    <div class="metric"><div class="v" id="c-q">0</div><div class="k">今日題數</div></div>
+    <div class="metric" id="mt-cacc"><div class="v" id="c-acc">—</div><div class="k">今日正確率</div></div>
+    <div class="metric" id="mt-cstreak"><div class="v" id="c-streak">0</div><div class="k">連續正確</div></div>
+    <div class="metric"><div class="v" id="c-best">0</div><div class="k">最佳連續</div></div>
+    <div class="metric"><div class="v" id="c-sec">—</div><div class="k">平均秒數</div></div>
+  </div>
+
+  <div class="seg" id="cseg">
+    <button data-c="value" aria-selected="true">牌值</button>
+    <button data-c="flow" aria-selected="false">流水數</button>
+    <button data-c="true" aria-selected="false">真數</button>
+  </div>
+
+  <div class="table" id="c-table">
+    <div class="zone">
+      <span class="label" id="c-label">Hi-Lo</span>
+      <div class="cstage" id="c-stage"></div>
+      <div class="readout" id="c-readout"></div>
+    </div>
+    <div class="gauge">
+      <span class="label">進度</span>
+      <div class="bar"><i id="c-fill" style="width:0%"></i></div>
+      <span class="pct" id="c-prog">—</span>
+      <span class="sep"></span>
+      <span class="pct live" id="c-time">0.0s</span>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div id="c-slot"></div>
+    <div id="c-input"></div>
+    <button class="next hide" id="c-next">下一題</button>
+  </div>
+
+  <div class="toggles" id="c-opts"></div>
+
+  <div class="goalwrap" style="margin-top:16px">
+    <div class="goalhead">
+      <div class="big" id="c-todayq">0<em> / 30 題</em></div>
+      <span class="label" id="c-todayacc">正確率 —</span>
+    </div>
+    <div class="gbar"><i id="c-goalbar" style="width:0%"></i></div>
+  </div>
+
+  <h2>Hi-Lo 牌值</h2>
+  <table class="hilo">
+    <tr class="p"><td class="v">2 3 4 5 6</td><td class="c">＋1 　小牌出掉了</td></tr>
+    <tr class="z"><td class="v">7 8 9</td><td class="c">　0 　不動</td></tr>
+    <tr class="m"><td class="v">10 J Q K A</td><td class="c">－1 　大牌出掉了</td></tr>
+  </table>
+  <p class="note">一副牌 20 張小牌、20 張大牌，整副數完剛好回到 0，所以叫平衡計數。<br><br>
+  <b>流水數越高＝剩下的大牌越多＝對你越有利</b>：容易拿到 Blackjack（賠 1.5 倍）、加倍容易成功、莊家 12–16 容易爆。反過來流水數是負的就是對莊家有利。</p>
+
+  <h2>真數</h2>
+  <div class="formula">真數 ＝ <em>流水數</em> ÷ <em>剩餘副數</em><br>
+    <span class="sm">例：流水數 ＋9，八副牌打掉 5 副 → 9 ÷ 3 ＝ 真數 ＋3</span></div>
+  <p class="note">流水數 ＋9 在只剩一副時很誇張，在還剩八副時幾乎沒意義。<b>要下多少注看的是真數，不是流水數。</b><br><br>
+  剩餘副數用看的估：牌盒裡的棄牌堆大約幾副，剩下的就是幾副，抓到半副精度就夠了。</p>
+
+  <h2>凱利公式</h2>
+  <p class="note">算牌告訴你「現在有沒有優勢」，凱利公式回答下一個問題——<b>有優勢的時候，該押身上多少錢？</b><br><br>
+  押太小，贏的速度慢到沒有意義；押太大，就算每一把期望值都是正的，也會在某一段連輸裡把本金輸光。凱利是讓長期資金成長率最大的那個下注比例，多押少押都比它差。</p>
+  <div class="formula">f<em>*</em> ＝ ( b·p − q ) ÷ b<br>
+    <span class="sm">b 賠率　p 勝率　q 敗率（＝1−p）　f* 該押本金的幾成</span></div>
+  <p class="note">21點不是單純的輸贏兩種結果（有平手、加倍、分牌、Blackjack 賠 1.5），所以實務上用等價的形式：</p>
+  <div class="formula">f<em>*</em> ≈ <em>優勢</em> ÷ <em>變異數</em>　≈　優勢 ÷ 1.32<br>
+    <span class="sm">21點每一單位下注的變異數約 1.32</span></div>
+  <p class="note">優勢從真數來。八副 S17、Blackjack 3:2、可 DAS 的桌子，真數 ＋1 左右才打平，之後真數每多 ＋1，優勢大約多 0.5%：</p>
+  <div class="formula">優勢% ≈ ( <em>真數</em> − 1 ) × 0.5</div>
+
+  <h2>下注計算</h2>
+  <div class="kbox">
+    <div class="krow"><span class="label">本金</span>
+      <input id="k-bank" class="kin" type="text" inputmode="numeric" value="30000"></div>
+    <div class="krow"><span class="label">最低注</span>
+      <input id="k-min" class="kin" type="text" inputmode="numeric" value="100"></div>
+    <div class="krow"><span class="label">目前真數</span>
+      <div class="step"><button type="button" id="k-dn">−</button><span id="k-tc">+2</span><button type="button" id="k-up">＋</button></div></div>
+    <div class="kout">
+      <div><div class="v" id="k-edge">—</div><div class="k">你的優勢</div></div>
+      <div><div class="v" id="k-bet">—</div><div class="k">建議下注</div></div>
+      <div><div class="v" id="k-unit">—</div><div class="k">＝幾個最低注</div></div>
+    </div>
+    <p class="note" id="k-note" style="margin-top:13px"></p>
+  </div>
+  <p class="note"><b>為什麼建議用半凱利</b>：全凱利的波動大到多數人撐不住——本金腰斬是家常便飯。押一半，長期成長率只掉約 25%，但資金起伏減半，破產機率大幅下降。上面算的就是半凱利。<br><br>
+  真數是負的或還不到 ＋1 時，正確答案是<b>下最低注</b>（或乾脆不上桌），不是不下注硬撐——一直坐著不押會被看出來。<br><br>
+  注碼跳動也要收斂：從 100 直接跳到 2000 等於在賭場臉上寫「我在算牌」。實務上一次調整控制在前一手的兩倍以內，換靴或輸的那一手之後再往上加。</p>
+</section>
+
 <!-- ══ CHART ══ -->
 <section id="view-chart" class="hide">
   <div class="seg" id="seg">
@@ -488,8 +679,44 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   <p class="note">「手數」指你做過的決定次數，單手判斷與實戰模擬都計入。建議每日 100 手，正確率穩定在 98% 以上再考慮進階內容。</p>
 </section>
 
+<!-- ══ SETTINGS ══ -->
+<section id="view-set" class="hide">
+  <h2>帳號</h2>
+  <div class="setblk">
+    <div class="r"><span>目前登入</span><span id="st-name">—</span></div>
+    <div class="r"><span>身分</span><span id="st-role">—</span></div>
+    <div class="r"><span>雲端同步</span><span id="sync-state">—</span></div>
+  </div>
+  <button class="next2" id="switch">切換帳號</button>
+  <button class="next2" id="reset">清除本機記錄</button>
+  <p class="note">切換帳號不會刪掉雲端記錄；清除本機記錄只清這台裝置，重新登入同一組帳號密碼會把雲端的每日統計拉回來。</p>
+
+  <div id="adm" class="hide">
+    <h2>建立帳號 <span class="badge">系統人員</span></h2>
+    <div class="setblk">
+      <div class="r"><span>暱稱</span>
+        <input id="ad-name" class="kin" type="text" maxlength="12" style="text-align:left" autocomplete="off"></div>
+      <div class="r"><span>四位數字密碼</span>
+        <input id="ad-pin" class="kin" type="text" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+    </div>
+    <button class="next2" id="ad-create">建立帳號</button>
+    <p class="gmsg" id="ad-msg"></p>
+
+    <h2>使用者儀表板 <span class="badge">系統人員</span></h2>
+    <div class="metrics">
+      <div class="metric"><div class="v" id="ad-u">—</div><div class="k">帳號數</div></div>
+      <div class="metric"><div class="v" id="ad-a">—</div><div class="k">今日練習</div></div>
+      <div class="metric"><div class="v" id="ad-h">—</div><div class="k">總手數</div></div>
+      <div class="metric"><div class="v" id="ad-c">—</div><div class="k">平均正確率</div></div>
+    </div>
+    <ul class="ulist" id="ad-list"></ul>
+    <button class="next2" id="ad-refresh" style="margin-top:10px">重新整理</button>
+    <p class="note">點一下任何一位使用者可以重設他的四位數字密碼。密碼只存雜湊，系統人員也看不到原本的密碼。</p>
+  </div>
+</section>
+
 <footer>
-  <button class="reset" id="switch">切換帳號</button>　·　<button class="reset" id="reset">清除本機記錄</button>
+  戰勝21點 · 練習用，不構成任何投注建議
 </footer>
 </div>
 
@@ -1216,21 +1443,28 @@ $("seg").onclick=function(e){
   const b=e.target.closest("button");if(!b)return;chartTab=b.dataset.t;
   $("seg").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
   renderChart();};
+const TABS=["drill","sim","count","chart","log","set"];
 function tab(w){
-  ["drill","sim","chart","log"].forEach(function(k){
+  TABS.forEach(function(k){
     $("tab-"+k).setAttribute("aria-selected",k===w);
     $("view-"+k).classList.toggle("hide",k!==w);});
   if(w==="chart")renderChart();
   if(w==="log")renderLog();
+  if(w==="set"){paintSet();}
   if(w==="sim"){if(sim.phase==="idle")simStart();startThink();}else stopThink();
+  if(w==="count"){cEnter();}else cLeave();
   window.scrollTo({top:0,behavior:"instant"});
 }
-["drill","sim","chart","log"].forEach(function(k){$("tab-"+k).onclick=function(){tab(k);};});
+TABS.forEach(function(k){$("tab-"+k).onclick=function(){tab(k);};});
 $("reset").onclick=function(){
   stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
-  paint();renderChart();renderLog();renderReviews();save();};
+  cstats={q:0,correct:0,streak:0,best:0,days:{}};csave();
+  paint();renderChart();renderLog();renderReviews();cPaint();save();};
 document.addEventListener("keydown",function(e){
   const k=e.key.toUpperCase(),inSim=!$("view-sim").classList.contains("hide");
+  if(!$("view-count").classList.contains("hide")){cKey(e);return;}
+  /* 其他分頁（策略表 / 記錄 / 設定）不該吃掉按鍵，否則會在看不到的分頁上偷偷作答 */
+  if(inSim===false&&$("view-drill").classList.contains("hide"))return;
   if(["H","S","D","P"].indexOf(k)>-1){
     const b=$(inSim?"sim-acts":"drill-acts").querySelector('.act[data-a="'+k+'"]');
     if(b&&!b.disabled){b.classList.add("picked");inSim?simAct(k,b):drillAnswer(k,b);}
@@ -1238,7 +1472,378 @@ document.addEventListener("keydown",function(e){
     if(inSim&&sim.phase==="done"){e.preventDefault();$("sim-slot").innerHTML="";simStart();}
     else if(!inSim&&answered){e.preventDefault();deal();}
   }});
+/* ═══ 算牌 · 標準 Hi-Lo ═══ */
+/* 2-6 → +1、7-9 → 0、10 J Q K A → −1。
+   一副牌 20 張小牌、20 張大牌，整副數完剛好回到 0（平衡計數），
+   所以真數直接用「流水數 ÷ 剩餘副數」，不需要另外補償。 */
+const CSTORE="bj-count-stats",CGOAL=30;
+const CBAG=[2,3,4,5,6,7,8,9,10,10,10,10,11];   /* 一個花色：J Q K 都算 10 點，所以 10 佔 4/13 */
+const CSPEED=[["慢",1100],["中",800],["快",550],["極速",350]];
+const CLEN=[10,20,52];
+let cstats={q:0,correct:0,streak:0,best:0,days:{}};
+let cmode="value",copt={n:20,speed:800},cq=null,cbuf="",cneg=false;
+let cTimer=null,cTick=null,cT0=0;
+
+function hilo(v){return v<=6?1:(v<=9?0:-1);}            /* v：2–11，11 代表 A */
+function sgn(n){return (n>0?"+":(n<0?"−":""))+Math.abs(n);}
+function cday(){
+  if(!cstats.days)cstats.days={};
+  const k=dayKey();
+  if(!cstats.days[k])cstats.days[k]={q:0,c:0,t:0,tn:0};
+  return cstats.days[k];
+}
+function cload(){
+  try{const r=localStorage.getItem(CSTORE);if(r)cstats=Object.assign(cstats,JSON.parse(r));}catch(e){}
+  if(!cstats.days)cstats.days={};
+}
+function csave(){try{localStorage.setItem(CSTORE,JSON.stringify(cstats));}catch(e){}}
+
+function cPaint(){
+  const d=cday(),pc=d.q?Math.round(d.c/d.q*100):0,perfect=d.q>0&&d.c===d.q;
+  $("c-q").textContent=d.q;
+  const av=$("c-acc");
+  av.textContent=d.q?pc+"%":"—";
+  av.className="v"+(perfect&&d.q?" up":(d.q&&pc<90?" down":""));
+  $("c-streak").textContent=cstats.streak||0;
+  $("c-best").textContent=cstats.best||0;
+  $("c-sec").textContent=d.tn?(d.t/d.tn).toFixed(1)+"s":"—";
+  $("c-todayq").innerHTML=d.q+"<em> / "+CGOAL+" 題</em>";
+  $("c-todayacc").textContent=d.q?("正確率 "+pc+"%"+(perfect?" · 全對":"")):"正確率 —";
+  const bar=$("c-goalbar");
+  bar.style.width=Math.min(100,Math.round(d.q/CGOAL*100))+"%";
+  bar.classList.toggle("done",d.q>=CGOAL&&perfect);   /* 達標且全對才轉綠 */
+}
+function cOpts(){
+  const box=$("c-opts");box.innerHTML="";
+  if(cmode!=="flow")return;                            /* 只有流水數用得到張數與速度 */
+  CLEN.forEach(function(n){
+    const b=document.createElement("button");
+    b.className="tg";b.textContent=n+" 張";b.dataset.n=n;
+    b.setAttribute("aria-pressed",copt.n===n);box.appendChild(b);});
+  CSPEED.forEach(function(s){
+    const b=document.createElement("button");
+    b.className="tg";b.textContent=s[0];b.dataset.s=s[1];
+    b.setAttribute("aria-pressed",copt.speed===s[1]);box.appendChild(b);});
+}
+function cClock(){
+  cT0=Date.now();clearInterval(cTick);
+  cTick=setInterval(function(){$("c-time").textContent=((Date.now()-cT0)/1000).toFixed(1)+"s";},100);
+}
+function cStop(){clearInterval(cTick);cTick=null;return cT0?(Date.now()-cT0)/1000:0;}
+function cEnter(){cPaint();cOpts();cNext();}
+function cLeave(){clearTimeout(cTimer);clearInterval(cTick);cTick=null;cq=null;}
+
+function cNext(){
+  clearTimeout(cTimer);
+  $("c-slot").innerHTML="";$("c-next").classList.add("hide");
+  $("c-table").classList.remove("win","lose");
+  $("c-readout").textContent="";
+  cbuf="";cneg=false;
+  if(cmode==="value")cNewValue();
+  else if(cmode==="flow")cNewFlow();
+  else cNewTrue();
+}
+function cNewValue(){
+  const v=rnd(CBAG);
+  cq={mode:"value",answer:hilo(v),shown:card(v)};
+  $("c-label").textContent="這張算幾點？";
+  $("c-stage").innerHTML="";$("c-stage").appendChild(cardEl(cq.shown));
+  $("c-prog").textContent="—";$("c-fill").style.width="0%";
+  $("c-input").innerHTML='<div class="acts three">'+
+    '<button class="act" data-v="1">＋1</button>'+
+    '<button class="act" data-v="0">0</button>'+
+    '<button class="act" data-v="-1">－1</button></div>';
+  cClock();
+}
+function cNewFlow(){
+  const n=copt.n,cards=[];let rc=0;
+  for(let i=0;i<n;i++){const v=rnd(CBAG);cards.push(card(v));rc+=hilo(v);}
+  cq={mode:"flow",answer:rc,cards:cards,i:0,n:n};
+  $("c-label").textContent="盯著牌，數流水數";
+  $("c-input").innerHTML="";$("c-stage").innerHTML="";
+  $("c-prog").textContent="0 / "+n;$("c-fill").style.width="0%";$("c-time").textContent="—";
+  (function step(){
+    if(cq.i>=n){
+      $("c-stage").innerHTML='<div class="big-num">?</div>';
+      $("c-label").textContent="流水數是多少？";
+      cKeypad();cClock();return;
+    }
+    const c=cq.cards[cq.i++];
+    $("c-stage").innerHTML="";$("c-stage").appendChild(cardEl(c));
+    $("c-prog").textContent=cq.i+" / "+n;
+    $("c-fill").style.width=Math.round(cq.i/n*100)+"%";
+    cTimer=setTimeout(step,copt.speed);
+  })();
+}
+function cNewTrue(){
+  let decks,dealt,rem,rc,tc,g=0;
+  do{
+    decks=rnd([6,6,8,8,2]);
+    dealt=rnd([1,1.5,2,2.5,3,3.5,4,4.5,5,5.5]);
+    rem=decks-dealt;
+    rc=Math.round((Math.random()*2-1)*15);
+    tc=rem>0?rc/rem:0;g++;
+  /* 避開剛好 .5 的答案：取整數的方向會有兩種說法，出成考題不公平 */
+  }while((rem<0.5||Math.abs(tc)>12||Math.abs(Math.abs(tc%1)-0.5)<0.08)&&g<80);
+  cq={mode:"true",rc:rc,rem:rem,decks:decks,dealt:dealt,exact:tc,answer:Math.round(tc)};
+  $("c-label").textContent="真數是多少？";
+  $("c-stage").innerHTML='<div class="cscene">'+
+    '<div><span class="label">流水數</span><b>'+sgn(rc)+'</b></div>'+
+    '<div><span class="label">牌盒</span><b>'+decks+' 副</b></div>'+
+    '<div><span class="label">已發</span><b>'+dealt+' 副</b></div></div>';
+  $("c-prog").textContent="—";$("c-fill").style.width="0%";
+  cKeypad();cClock();
+}
+function cKeypad(){
+  $("c-input").innerHTML=
+    '<div class="cdisp ph" id="c-disp">輸入答案</div><div class="kpad">'+
+    [1,2,3,4,5,6,7,8,9].map(function(n){return '<button data-k="'+n+'">'+n+'</button>';}).join("")+
+    '<button class="fn" data-k="sign">＋／－</button><button data-k="0">0</button>'+
+    '<button class="fn" data-k="del">刪除</button></div>'+
+    '<button class="next" id="c-submit" style="margin-top:8px">送出</button>';
+  cDisp();
+}
+function cDisp(){
+  const d=$("c-disp");if(!d)return;
+  if(cbuf===""){d.className="cdisp ph";d.textContent=cneg?"−":"輸入答案";}
+  else{d.className="cdisp";d.textContent=(cneg?"−":"+")+cbuf;}
+}
+function cPress(k){
+  if(k==="sign")cneg=!cneg;
+  else if(k==="del")cbuf=cbuf.slice(0,-1);
+  else if(cbuf.length<2)cbuf+=k;                       /* 兩位數就夠：流水數不會到三位 */
+  cDisp();
+}
+function cSubmit(){if(cq&&!cq.done&&cbuf!=="")cGrade((cneg?-1:1)*parseInt(cbuf,10));}
+
+function cGrade(mine){
+  if(!cq||cq.done)return;
+  cq.done=true;
+  const secs=cStop();
+  let ok,right=sgn(cq.answer),desc;
+  if(cq.mode==="true"){
+    ok=Math.abs(mine-cq.exact)<=0.5;                   /* 容許四捨五入方向不同 */
+    desc="真數 · 流水"+sgn(cq.rc)+" / 剩 "+cq.rem+" 副";
+  }else{
+    ok=mine===cq.answer;
+    desc=cq.mode==="value"?("牌值 "+cq.shown.label):("流水數 "+cq.n+" 張");
+  }
+  const d=cday();d.q++;if(ok)d.c++;
+  if(secs>0&&secs<300){d.t+=secs;d.tn++;}
+  cstats.q=(cstats.q||0)+1;if(ok)cstats.correct=(cstats.correct||0)+1;
+  cstats.streak=ok?(cstats.streak||0)+1:0;
+  if(cstats.streak>(cstats.best||0))cstats.best=cstats.streak;
+  csave();cPaint();
+  if(!ok)buzz(60);
+  /* 來源標「算牌」，後端據此把算牌題數跟策略手數分開統計 */
+  queueRow([new Date().toISOString(),"算牌",desc,"",sgn(mine),right,ok?"O":"X",
+            secs>0?Math.round(secs*10)/10:""]);
+  syncQueue();
+  $("c-table").classList.add(ok?"win":"lose");
+  cVerdict(ok,mine,right);
+}
+function cVerdict(ok,mine,right){
+  if(cq.mode==="value"){
+    /* 閃卡要的是節奏，不跳面板，對了很快翻下一張、錯了多停一下把正解看進去 */
+    $("c-readout").innerHTML=ok?'<b style="color:#7BD1A3">'+right+'</b>'
+      :'你答 '+sgn(mine)+'　正解 <b style="color:#E58079">'+right+'</b>';
+    $("c-input").querySelectorAll("button").forEach(function(b){b.disabled=true;});
+    cTimer=setTimeout(cNext,ok?460:1200);
+    return;
+  }
+  let sub,body;
+  if(cq.mode==="flow"){
+    sub=cq.n+" 張 · "+(copt.speed/1000).toFixed(2)+"s／張";
+    body=ok?("流水數 "+right+"，正確。")
+      :("你數到 "+sgn(mine)+"，實際是 <b>"+right+"</b>，差了 "+Math.abs(mine-cq.answer)+"。");
+  }else{
+    sub="流水 "+sgn(cq.rc)+" ÷ 剩 "+cq.rem+" 副";
+    body=(ok?"":"你答 "+sgn(mine)+"。")+" "+sgn(cq.rc)+" ÷ "+cq.rem+" ＝ "+
+      (cq.exact<0?"−":"+")+Math.abs(cq.exact).toFixed(2)+"，取整數 <b>"+right+"</b>。";
+  }
+  const p=document.createElement("div");
+  p.className="panel "+(ok?"ok":"no");
+  p.innerHTML='<div class="ph"><span class="t">'+(ok?"正確":"差了")+'</span>'+
+    '<span class="sub">'+sub+'</span></div><div class="pb">'+body+'</div>';
+  $("c-slot").innerHTML="";$("c-slot").appendChild(p);
+  $("c-input").innerHTML="";
+  $("c-next").classList.remove("hide");
+}
+function cKey(e){
+  if(!cq)return;
+  const k=e.key;
+  if(cq.done){if(k==="Enter"||k===" "){e.preventDefault();if(cmode!=="value")cNext();}return;}
+  if(cmode==="value"){
+    if(k==="1"||k==="+"){e.preventDefault();cGrade(1);}
+    else if(k==="0"){e.preventDefault();cGrade(0);}
+    else if(k==="-"||k==="2"){e.preventDefault();cGrade(-1);}
+    return;
+  }
+  if(!$("c-disp"))return;
+  if(/^[0-9]$/.test(k)){e.preventDefault();cPress(k);}
+  else if(k==="-"||k==="+"){e.preventDefault();cneg=(k==="-");cDisp();}
+  else if(k==="Backspace"){e.preventDefault();cPress("del");}
+  else if(k==="Enter"){e.preventDefault();cSubmit();}
+}
+$("cseg").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;
+  cmode=b.dataset.c;
+  $("cseg").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected",x===b);});
+  cOpts();cNext();};
+$("c-opts").onclick=function(e){
+  const b=e.target.closest(".tg");if(!b)return;
+  if(b.dataset.n)copt.n=+b.dataset.n;
+  if(b.dataset.s)copt.speed=+b.dataset.s;
+  cOpts();cNext();};
+$("c-input").onclick=function(e){
+  const b=e.target.closest("button");if(!b||b.disabled)return;
+  if(b.id==="c-submit"){cSubmit();return;}
+  if(b.dataset.v!==undefined){cGrade(parseInt(b.dataset.v,10));return;}
+  if(b.dataset.k!==undefined)cPress(b.dataset.k);};
+$("c-next").onclick=cNext;
+
+/* ═══ 凱利 ═══ */
+const BJ_VAR=1.32;      /* 21點每一單位下注的變異數，用來把優勢換算成該押的資金比例 */
+let kTC=2;
+function money(n){return "$"+Math.round(n).toLocaleString("en-US");}
+function numOf(el){return Math.max(0,parseFloat(String(el.value).replace(/[^\d.]/g,""))||0);}
+function kPaint(){
+  const bank=numOf($("k-bank")),min=Math.max(1,numOf($("k-min")));
+  const edge=(kTC-1)*0.5;                       /* 八副 S17 DAS：真數 +1 附近打平，之後每 +1 約多 0.5% */
+  $("k-tc").textContent=sgn(kTC);
+  const ev=$("k-edge");
+  ev.textContent=(edge>0?"+":(edge<0?"−":""))+Math.abs(edge).toFixed(1)+"%";
+  ev.className="v"+(edge>0?" go":(edge<0?" neg":""));
+  const full=bank*(edge/100)/BJ_VAR, half=full/2;
+  if(edge<=0||half<min){
+    $("k-bet").textContent=money(min);$("k-bet").className="v";
+    $("k-unit").textContent="1";$("k-unit").className="v";
+    $("k-note").innerHTML=edge<=0
+      ? "真數 "+sgn(kTC)+" 時莊家還占上風，下<b>最低注</b>，把子彈留給真數上來的那幾手。"
+      : "優勢還太薄，半凱利算出來不到一個最低注，一樣下<b>最低注</b>。";
+    return;
+  }
+  const bet=Math.max(min,Math.round(half/min)*min);
+  $("k-bet").textContent=money(bet);$("k-bet").className="v go";
+  $("k-unit").textContent=Math.round(bet/min);$("k-unit").className="v go";
+  $("k-note").innerHTML="全凱利 "+money(full)+"，取一半 "+money(half)+
+    "，湊成最低注的整數倍就是 <b>"+money(bet)+"</b>。這一手的期望收益約 "+money(bet*edge/100)+"。";
+}
+$("k-up").onclick=function(){if(kTC<10){kTC++;kPaint();}};
+$("k-dn").onclick=function(){if(kTC>-5){kTC--;kPaint();}};
+["k-bank","k-min"].forEach(function(id){$(id).addEventListener("input",kPaint);});
+
+/* ═══ 設定 / 系統人員 ═══ */
+/* 角色由後端在登入時回報，前端只是快取；管理動作一律再帶帳密給後端驗一次 */
+const RKEY="bj-role";
+let admLoaded=false;
+function isAdmin(){return localStorage.getItem(RKEY)==="admin";}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function paintSet(){
+  $("st-name").textContent=playerName()||"—";
+  $("st-role").innerHTML=isAdmin()?'<span class="badge">系統人員</span>':"一般使用者";
+  paintSync();
+  $("adm").classList.toggle("hide",!isAdmin());
+  if(isAdmin()&&playerName()&&!admLoaded)admLoad();
+}
+function admLoad(){
+  const ul=$("ad-list");
+  ul.innerHTML='<li class="load">讀取中…</li>';
+  jsonp({action:"admin_users",name:playerName(),pin:playerPin()},function(d){
+    if(!d||!d.ok){
+      ul.innerHTML='<li class="none">'+(d&&d.error==="forbidden"?"沒有權限":"連不上伺服器")+'</li>';
+      return;}
+    admLoaded=true;admRender(d.users||[]);});
+}
+function admRender(us){
+  const ul=$("ad-list");ul.innerHTML="";
+  let hands=0,corr=0,act=0;
+  us.forEach(function(u){
+    hands+=u.hands||0;corr+=u.correct||0;
+    if(u.todayHands||u.todayCount)act++;});
+  $("ad-u").textContent=us.length;
+  $("ad-a").textContent=act;
+  $("ad-h").textContent=hands.toLocaleString("en-US");
+  $("ad-c").textContent=hands?Math.round(corr/hands*100)+"%":"—";
+  if(!us.length){ul.innerHTML='<li class="none">還沒有任何帳號</li>';return;}
+  us.forEach(function(u){
+    const li=document.createElement("li");
+    li.dataset.n=u.name;
+    const acc=u.hands?Math.round(u.correct/u.hands*100)+"%":"—";
+    li.innerHTML='<span class="nm">'+esc(u.name)+
+      (u.role==="admin"?' <span class="badge">系統人員</span>':"")+'</span>'+
+      '<span class="st">'+(u.hands||0)+' 手 · '+acc+'</span>'+
+      '<span class="mt">最後登入 '+esc(u.lastLogin||"—")+'　共 '+(u.logins||0)+' 次'+
+      '<br>練習 '+(u.days||0)+' 天　算牌 '+(u.count||0)+' 題'+
+      (u.lastDay?'　最後練習 '+esc(u.lastDay):"")+'</span>';
+    ul.appendChild(li);});
+}
+$("ad-list").onclick=function(e){
+  const li=e.target.closest("li");
+  if(!li||!li.dataset.n||li.classList.contains("upin"))return;
+  const nx=li.nextElementSibling;
+  if(nx&&nx.classList.contains("upin")){nx.remove();return;}
+  $("ad-list").querySelectorAll("li.upin").forEach(function(x){x.remove();});
+  const row=document.createElement("li");
+  row.className="upin";
+  row.innerHTML='<input class="kin" type="text" inputmode="numeric" maxlength="4" '+
+    'placeholder="新的四位數字密碼" autocomplete="off">'+
+    '<button type="button" data-a="pin">重設</button>'+
+    '<button type="button" data-a="del" style="color:var(--hit)">刪除</button>';
+  const inp=row.querySelector("input");
+  const bPin=row.querySelector('[data-a="pin"]'),bDel=row.querySelector('[data-a="del"]');
+  bPin.onclick=function(){
+    const v=inp.value.trim();
+    if(!/^\d{4}$/.test(v)){inp.style.borderColor="var(--hit)";return;}
+    bPin.disabled=true;bPin.textContent="…";
+    jsonp({action:"admin_setpin",name:playerName(),pin:playerPin(),
+           target:li.dataset.n,newpin:v},function(d){
+      bPin.disabled=false;
+      bPin.textContent=(d&&d.ok)?"已重設":"失敗";
+      if(d&&d.ok)setTimeout(function(){row.remove();},900);});};
+  /* 刪除要點兩次才真的送出，避免在手機上滑一滑就誤刪別人的帳號 */
+  bDel.onclick=function(){
+    if(bDel.dataset.arm!=="1"){
+      bDel.dataset.arm="1";bDel.textContent="確定刪除？";
+      setTimeout(function(){bDel.dataset.arm="";bDel.textContent="刪除";},4000);
+      return;}
+    bDel.disabled=true;bDel.textContent="…";
+    jsonp({action:"admin_delete",name:playerName(),pin:playerPin(),target:li.dataset.n},
+      function(d){
+        if(d&&d.ok){row.remove();li.remove();admLoaded=false;admLoad();return;}
+        bDel.disabled=false;
+        bDel.textContent=(d&&d.error==="self")?"不能刪自己":"失敗";});};
+  li.after(row);};
+$("ad-create").onclick=function(){
+  const nm=$("ad-name").value.trim(),pin=$("ad-pin").value.trim(),m=$("ad-msg"),btn=this;
+  m.className="gmsg";
+  if(!nm){m.textContent="請輸入暱稱";return;}
+  if(!/^\d{4}$/.test(pin)){m.textContent="密碼要剛好四位數字";return;}
+  btn.disabled=true;m.textContent="建立中…";
+  jsonp({action:"admin_create",name:playerName(),pin:playerPin(),newname:nm,newpin:pin},
+    function(d){
+      btn.disabled=false;
+      if(!d||!d.ok){
+        m.textContent=(d&&d.error==="exists")?"這個暱稱已經有人用了"
+          :(d&&d.error==="forbidden")?"沒有權限"
+          :(d&&d.error==="bad_input")?"暱稱或密碼格式不對":"連不上伺服器";
+        return;}
+      m.className="gmsg ok";m.textContent="已建立 "+nm;
+      $("ad-name").value="";$("ad-pin").value="";
+      admLoaded=false;admLoad();});};
+$("ad-refresh").onclick=function(){admLoaded=false;admLoad();};
+
 /* ═══ 登入 ═══ */
+function applyCount(cd){
+  if(!cd||!cd.length)return;
+  if(!cstats.days)cstats.days={};
+  cd.forEach(function(d){
+    const cur=cstats.days[d.day]||{q:0,c:0,t:0,tn:0};
+    if(d.q>(cur.q||0)){cur.q=d.q;cur.c=d.c;}   /* 以雲端較大者為準，同一天多裝置不互相蓋掉 */
+    cstats.days[d.day]=cur;});
+  csave();
+}
 function applyRemote(days){
   if(!stats.days)stats.days={};
   (days||[]).forEach(function(d){
@@ -1253,7 +1858,7 @@ function applyRemote(days){
 }
 function closeGate(){
   $("gate").classList.add("hide");
-  paint();renderChart();renderLog();
+  paint();renderChart();renderLog();cPaint();paintSet();
 }
 function gateGo(){
   var nm=$("g-name").value.trim(),pin=$("g-pin").value.trim(),msg=$("g-msg"),btn=$("g-go");
@@ -1270,7 +1875,9 @@ function gateGo(){
       return;
     }
     localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,pin);
-    applyRemote(d.days);
+    localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
+    admLoaded=false;
+    applyRemote(d.days);applyCount(d.count);
     msg.className="gmsg ok";
     msg.textContent=d.created?"帳號建立完成":("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
     setTimeout(closeGate,600);
@@ -1282,7 +1889,8 @@ $("g-go").onclick=gateGo;
 });
 $("switch").onclick=function(){
   syncQueue(true);
-  localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);
+  localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);localStorage.removeItem(RKEY);
+  admLoaded=false;$("adm").classList.add("hide");
   $("g-name").value="";$("g-pin").value="";
   $("g-msg").textContent="";$("g-msg").className="gmsg";
   $("gate").classList.remove("hide");
@@ -1291,7 +1899,11 @@ $("switch").onclick=function(){
 if(playerName()&&playerPin())$("gate").classList.add("hide");
 
 setInterval(function(){syncQueue();},20000);
-load().then(function(){buildPickers();renderReviews();renderChart();renderPick();paintSync();});
+cload();
+load().then(function(){
+  buildPickers();renderReviews();renderChart();renderPick();
+  cPaint();kPaint();paintSet();
+});
 </script>
 </body>
 </html>

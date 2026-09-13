@@ -3,8 +3,9 @@
  * 綁定在「戰勝21點 練習記錄」試算表上，由 GitHub Pages 上的前端呼叫。
  *
  * 帳號     ：暱稱 + 四位數字密碼（只存 SHA-256 雜湊，試算表看不到原始密碼）
- * 手牌記錄 ：每一次判斷一列
- * 每日統計 ：日期 × 練習者 的手數 / 正確 / 正確率（增量更新，不重算全表）
+ * 手牌記錄 ：每一次判斷一列（策略判斷與算牌題目都寫這裡，用「來源」欄區分）
+ * 每日統計 ：日期 × 練習者，策略手數與算牌題數分開兩組欄位（增量更新，不重算全表）
+ * 登入記錄 ：每次登入一列，給系統人員的使用者儀表板看
  *
  * 寫入走 POST（跨網域 no-cors，前端不需要讀回應）
  * 讀取走 GET + JSONP（跨網域要讀回應，只能用 JSONP）
@@ -13,47 +14,71 @@
 var SH_HANDS = '手牌記錄';
 var SH_DAILY = '每日統計';
 var SH_USERS = '帳號';
+var SH_LOGIN = '登入記錄';
 var HEAD_HANDS = ['時間', '日期', '練習者', '來源', '手牌', '莊家明牌', '你選', '正解', '對錯', '秒數'];
-var HEAD_DAILY = ['日期', '練習者', '手數', '正確', '正確率'];
-var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用'];
+var HEAD_DAILY = ['日期', '練習者', '手數', '正確', '正確率', '算牌題數', '算牌正確'];
+var HEAD_USERS = ['暱稱', '密碼雜湊', '建立時間', '最後使用', '角色', '登入次數', '最後登入'];
+var HEAD_LOGIN = ['時間', '暱稱', '角色'];
+
+var SRC_COUNT = '算牌';     // 手牌記錄的「來源」欄是這個值，就計入算牌題數而不是策略手數
+var LOGIN_KEEP = 2000;      // 登入記錄只留最近這麼多列
+// 使用者都在台灣，日界線就該用台北時間切。
+// 試算表本身的時區是 America/Los_Angeles，跟著它走的話下午三點前練的會被記到前一天。
+var TZ = 'Asia/Taipei';
+
+// 帳號表欄位位置（1-based），改欄位順序時這裡要一起改
+var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6, U_LASTLOGIN = 7;
 
 /**
  * 放在最前面：編輯器預設會選第一個函式，所以第一個函式必須無參數且可安全執行。
- * 建立三張工作表、移除預設空白表。重複執行不會有副作用。
+ * 建立工作表、補上後來新增的欄位、移除預設空白表。重複執行不會有副作用。
  */
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   sheetOf(ss, SH_HANDS, HEAD_HANDS);
   sheetOf(ss, SH_DAILY, HEAD_DAILY);
   sheetOf(ss, SH_USERS, HEAD_USERS);
+  sheetOf(ss, SH_LOGIN, HEAD_LOGIN);
+  var keep = [SH_HANDS, SH_DAILY, SH_USERS, SH_LOGIN];
   var all = ss.getSheets();
   for (var i = 0; i < all.length; i++) {
-    var n = all[i].getName();
-    if (n !== SH_HANDS && n !== SH_DAILY && n !== SH_USERS && all[i].getLastRow() === 0) {
+    if (keep.indexOf(all[i].getName()) < 0 && all[i].getLastRow() === 0) {
       ss.deleteSheet(all[i]);
     }
   }
   return '完成：' + ss.getSheets().map(function (s) { return s.getName(); }).join(' / ');
 }
 
-function ymd(v, tz) {
-  if (v instanceof Date) return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+function ymd(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   return String(v);
+}
+
+function stamp(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'MM/dd HH:mm');
+  return v ? String(v) : '';
 }
 
 function sheetOf(ss, name, head) {
   var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, head.length).setValues([head])
-      .setFontWeight('bold').setBackground('#1E2327').setFontColor('#EDEBE6');
+    writeHead(sh, head);
     sh.setFrozenRows(1);
     sh.autoResizeColumns(1, head.length);
+  } else if (sh.getLastColumn() < head.length) {
+    // 舊表補欄位：只寫標題，既有資料列留空，讀取一律用 || 0 兜底
+    writeHead(sh, head);
   }
   // 日期欄一律純文字，否則 Sheets 會轉成日期型別，再被試算表時區位移一天
   if (name === SH_DAILY) sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@');
   if (name === SH_HANDS) sh.getRange(1, 2, sh.getMaxRows(), 1).setNumberFormat('@');
   return sh;
+}
+
+function writeHead(sh, head) {
+  sh.getRange(1, 1, 1, head.length).setValues([head])
+    .setFontWeight('bold').setBackground('#1E2327').setFontColor('#EDEBE6');
 }
 
 function out(obj, callback) {
@@ -74,49 +99,143 @@ function hashPin(name, pin) {
   return raw.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 }
 
+function cleanName(v) {
+  return String(v || '').trim().substring(0, 20);
+}
+
 function findUser(ss, name) {
   var sh = sheetOf(ss, SH_USERS, HEAD_USERS);
   var last = sh.getLastRow();
   if (last < 2) return { sh: sh, row: -1 };
-  var v = sh.getRange(2, 1, last - 1, 2).getValues();
+  var v = sh.getRange(2, 1, last - 1, HEAD_USERS.length).getValues();
   for (var i = 0; i < v.length; i++) {
-    if (String(v[i][0]) === name) return { sh: sh, row: i + 2, hash: String(v[i][1]) };
+    if (String(v[i][0]) === name) {
+      return {
+        sh: sh, row: i + 2,
+        hash: String(v[i][U_HASH - 1]),
+        role: String(v[i][U_ROLE - 1] || 'user'),
+        logins: Number(v[i][U_LOGINS - 1]) || 0
+      };
+    }
   }
   return { sh: sh, row: -1 };
 }
 
 /**
  * 驗證帳號。createIfMissing=true 時，暱稱不存在就直接建立（等於註冊）。
- * 回傳 {ok, created} 或 {ok:false, error:'bad_input'|'no_user'|'bad_pin'}
+ * 回傳 {ok, created, name, role, row, sh} 或 {ok:false, error:'bad_input'|'no_user'|'bad_pin'}
  */
 function auth(ss, name, pin, createIfMissing) {
-  name = String(name || '').trim().substring(0, 20);
+  name = cleanName(name);
   pin = String(pin || '');
   if (!name || !/^\d{4}$/.test(pin)) return { ok: false, error: 'bad_input' };
   var u = findUser(ss, name);
   var h = hashPin(name, pin);
   if (u.row < 0) {
     if (!createIfMissing) return { ok: false, error: 'no_user' };
-    u.sh.appendRow([name, h, new Date(), new Date()]);
-    return { ok: true, created: true, name: name };
+    u.sh.appendRow([name, h, new Date(), new Date(), 'user', 0, '']);
+    return { ok: true, created: true, name: name, role: 'user', row: u.sh.getLastRow(), sh: u.sh, logins: 0 };
   }
   if (u.hash !== h) return { ok: false, error: 'bad_pin' };
-  u.sh.getRange(u.row, 4).setValue(new Date());
-  return { ok: true, created: false, name: name };
+  u.sh.getRange(u.row, U_USED).setValue(new Date());
+  return { ok: true, created: false, name: name, role: u.role, row: u.row, sh: u.sh, logins: u.logins };
 }
 
-/** 取某個練習者的每日統計 */
+/** 管理動作共用：驗身分 + 檢查角色。前端的角色只是快取，這裡才是真的關卡。 */
+function requireAdmin(ss, p) {
+  var a = auth(ss, p.name, p.pin, false);
+  if (!a.ok) return a;
+  if (a.role !== 'admin') return { ok: false, error: 'forbidden' };
+  return a;
+}
+
+function hasAnyAdmin(ss) {
+  var sh = sheetOf(ss, SH_USERS, HEAD_USERS);
+  var last = sh.getLastRow();
+  if (last < 2) return false;
+  var v = sh.getRange(2, U_ROLE, last - 1, 1).getValues();
+  for (var i = 0; i < v.length; i++) {
+    if (String(v[i][0]) === 'admin') return true;
+  }
+  return false;
+}
+
+/** 記一次登入：帳號表累加次數，另外在登入記錄留一列時間 */
+function markLogin(ss, a) {
+  a.sh.getRange(a.row, U_LOGINS).setValue((a.logins || 0) + 1);
+  a.sh.getRange(a.row, U_LASTLOGIN).setValue(new Date());
+  var sh = sheetOf(ss, SH_LOGIN, HEAD_LOGIN);
+  sh.appendRow([new Date(), a.name, a.role || 'user']);
+  var last = sh.getLastRow();
+  if (last > LOGIN_KEEP + 500) sh.deleteRows(2, last - 1 - LOGIN_KEEP);
+}
+
+/** 取某個練習者的每日統計；策略手數與算牌題數分開回傳 */
 function daysOf(ss, name) {
   var sh = ss.getSheetByName(SH_DAILY);
-  if (!sh || sh.getLastRow() < 2) return [];
-  var tz = ss.getSpreadsheetTimeZone() || 'Asia/Taipei';
-  var v = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();
-  var res = [];
+  if (!sh || sh.getLastRow() < 2) return { days: [], count: [] };
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, HEAD_DAILY.length).getValues();
+  var days = [], count = [];
   for (var i = 0; i < v.length; i++) {
-    if (String(v[i][1]) === name) {
-      res.push({ day: ymd(v[i][0], tz), hands: Number(v[i][2]) || 0, correct: Number(v[i][3]) || 0 });
+    if (String(v[i][1]) !== name) continue;
+    var day = ymd(v[i][0]);
+    var hands = Number(v[i][2]) || 0;
+    var cq = Number(v[i][5]) || 0;
+    if (hands) days.push({ day: day, hands: hands, correct: Number(v[i][3]) || 0 });
+    if (cq) count.push({ day: day, q: cq, c: Number(v[i][6]) || 0 });
+  }
+  return { days: days, count: count };
+}
+
+/** 系統人員儀表板：每個帳號的登入與練習狀況 */
+function adminUsers(ss) {
+  var sh = sheetOf(ss, SH_USERS, HEAD_USERS);
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+
+  // 每日統計整張讀一次在記憶體裡彙總，不要每個帳號各掃一遍
+  var agg = {}, today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  var d = ss.getSheetByName(SH_DAILY);
+  if (d && d.getLastRow() > 1) {
+    var dv = d.getRange(2, 1, d.getLastRow() - 1, HEAD_DAILY.length).getValues();
+    for (var i = 0; i < dv.length; i++) {
+      var nm = String(dv[i][1]);
+      if (!nm) continue;
+      var day = ymd(dv[i][0]);
+      var g = agg[nm];
+      if (!g) g = agg[nm] = { hands: 0, correct: 0, count: 0, ccorrect: 0, days: 0, lastDay: '', todayHands: 0, todayCount: 0 };
+      g.hands += Number(dv[i][2]) || 0;
+      g.correct += Number(dv[i][3]) || 0;
+      g.count += Number(dv[i][5]) || 0;
+      g.ccorrect += Number(dv[i][6]) || 0;
+      g.days++;
+      if (day > g.lastDay) g.lastDay = day;
+      if (day === today) {
+        g.todayHands += Number(dv[i][2]) || 0;
+        g.todayCount += Number(dv[i][5]) || 0;
+      }
     }
   }
+
+  var v = sh.getRange(2, 1, last - 1, HEAD_USERS.length).getValues(), res = [];
+  for (var j = 0; j < v.length; j++) {
+    var name = String(v[j][0]);
+    if (!name) continue;
+    var g2 = agg[name] || { hands: 0, correct: 0, count: 0, ccorrect: 0, days: 0, lastDay: '', todayHands: 0, todayCount: 0 };
+    res.push({
+      name: name,
+      role: String(v[j][U_ROLE - 1] || 'user'),
+      created: stamp(v[j][U_CREATED - 1]),
+      // 舊帳號沒有「最後登入」，退回用「最後使用」
+      lastLogin: stamp(v[j][U_LASTLOGIN - 1] || v[j][U_USED - 1]),
+      logins: Number(v[j][U_LOGINS - 1]) || 0,
+      hands: g2.hands, correct: g2.correct,
+      count: g2.count, ccorrect: g2.ccorrect,
+      days: g2.days, lastDay: g2.lastDay,
+      todayHands: g2.todayHands, todayCount: g2.todayCount
+    });
+  }
+  res.sort(function (a, b) { return String(b.lastLogin).localeCompare(String(a.lastLogin)); });
   return res;
 }
 
@@ -140,20 +259,25 @@ function doPost(e) {
     var player = a.name;
 
     var hands = sheetOf(ss, SH_HANDS, HEAD_HANDS);
-    var tz = ss.getSpreadsheetTimeZone() || 'Asia/Taipei';
-
+  
     // rows: [isoTime, 來源, 手牌, 莊家明牌, 你選, 正解, O|X, 秒數]
     var buf = [], daily = {};
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var when = new Date(r[0]);
       if (isNaN(when.getTime())) when = new Date();
-      var day = Utilities.formatDate(when, tz, 'yyyy-MM-dd');
+      var day = Utilities.formatDate(when, TZ, 'yyyy-MM-dd');
       buf.push([when, day, player, r[1], r[2], r[3], r[4], r[5], r[6], r[7]]);
       var k = day + ' ' + player;
-      if (!daily[k]) daily[k] = { day: day, player: player, n: 0, ok: 0 };
-      daily[k].n++;
-      if (r[6] === 'O') daily[k].ok++;
+      if (!daily[k]) daily[k] = { day: day, player: player, n: 0, ok: 0, cn: 0, cok: 0 };
+      // 算牌題目不能混進策略手數，否則前端的「練習記錄」正確率會被稀釋
+      if (r[1] === SRC_COUNT) {
+        daily[k].cn++;
+        if (r[6] === 'O') daily[k].cok++;
+      } else {
+        daily[k].n++;
+        if (r[6] === 'O') daily[k].ok++;
+      }
     }
     hands.getRange(hands.getLastRow() + 1, 1, buf.length, HEAD_HANDS.length).setValues(buf);
     bumpDaily(ss, daily);
@@ -168,13 +292,12 @@ function doPost(e) {
 /** 增量更新每日統計：只讀現有列找 key，不重算整張手牌記錄 */
 function bumpDaily(ss, daily) {
   var sh = sheetOf(ss, SH_DAILY, HEAD_DAILY);
-  var tz = ss.getSpreadsheetTimeZone() || 'Asia/Taipei';
   var last = sh.getLastRow();
   var idx = {}, vals = [];
   if (last > 1) {
-    vals = sh.getRange(2, 1, last - 1, 4).getValues();
+    vals = sh.getRange(2, 1, last - 1, HEAD_DAILY.length).getValues();
     for (var i = 0; i < vals.length; i++) {
-      idx[ymd(vals[i][0], tz) + ' ' + String(vals[i][1])] = i;
+      idx[ymd(vals[i][0]) + ' ' + String(vals[i][1])] = i;
     }
   }
   var appends = [];
@@ -182,11 +305,13 @@ function bumpDaily(ss, daily) {
     var e = daily[k];
     if (idx.hasOwnProperty(k)) {
       var i2 = idx[k];
-      var n = Number(vals[i2][2] || 0) + e.n;
-      var ok = Number(vals[i2][3] || 0) + e.ok;
-      sh.getRange(i2 + 2, 3, 1, 3).setValues([[n, ok, ok / n]]);
+      var n = (Number(vals[i2][2]) || 0) + e.n;
+      var ok = (Number(vals[i2][3]) || 0) + e.ok;
+      var cn = (Number(vals[i2][5]) || 0) + e.cn;
+      var cok = (Number(vals[i2][6]) || 0) + e.cok;
+      sh.getRange(i2 + 2, 3, 1, 5).setValues([[n, ok, n ? ok / n : 0, cn, cok]]);
     } else {
-      appends.push([e.day, e.player, e.n, e.ok, e.ok / e.n]);
+      appends.push([e.day, e.player, e.n, e.ok, e.n ? e.ok / e.n : 0, e.cn, e.cok]);
     }
   }
   if (appends.length) {
@@ -195,6 +320,53 @@ function bumpDaily(ss, daily) {
   if (sh.getLastRow() > 1) {
     sh.getRange(2, 5, sh.getLastRow() - 1, 1).setNumberFormat('0.0%');
   }
+}
+
+/**
+ * 用手牌記錄的絕對時間，照台北時區把每日統計整張重算。
+ * 之前每日統計是照試算表時區（美西）切天的，日期整批往前偏一天；
+ * 手牌記錄第一欄存的是真正的時間點，所以可以完全重建，不是估的。
+ */
+function rebuildDaily(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var hands = sheetOf(ss, SH_HANDS, HEAD_HANDS);
+  var last = hands.getLastRow();
+  var daily = {}, order = [];
+  if (last > 1) {
+    var v = hands.getRange(2, 1, last - 1, HEAD_HANDS.length).getValues();
+    var fixed = [];
+    for (var i = 0; i < v.length; i++) {
+      var when = v[i][0], player = String(v[i][2]);
+      var old = String(v[i][1] || '');
+      if (!player) { fixed.push([old]); continue; }
+      // 時間欄萬一不是日期型別就退回用原本的日期字串，寧可日期偏一天也不要整列漏掉
+      var day = (when instanceof Date) ? ymd(when) : old;
+      fixed.push([day]);                       // 順便把手牌記錄的「日期」欄也補正
+      if (!day) continue;
+      var k = day + ' ' + player;
+      var e = daily[k];
+      if (!e) { e = daily[k] = { day: day, player: player, n: 0, ok: 0, cn: 0, cok: 0 }; order.push(k); }
+      if (String(v[i][3]) === SRC_COUNT) {
+        e.cn++; if (v[i][8] === 'O') e.cok++;
+      } else {
+        e.n++; if (v[i][8] === 'O') e.ok++;
+      }
+    }
+    hands.getRange(2, 2, fixed.length, 1).setValues(fixed);
+  }
+
+  var sh = sheetOf(ss, SH_DAILY, HEAD_DAILY);
+  if (sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);
+  order.sort();
+  var rows = order.map(function (k) {
+    var e = daily[k];
+    return [e.day, e.player, e.n, e.ok, e.n ? e.ok / e.n : 0, e.cn, e.cok];
+  });
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, HEAD_DAILY.length).setValues(rows);
+    sh.getRange(2, 5, rows.length, 1).setNumberFormat('0.0%');
+  }
+  return rows.length;
 }
 
 /* ═══════════ 讀取（JSONP）═══════════ */
@@ -211,10 +383,100 @@ function doGet(e) {
       // login：暱稱沒人用過就直接建立；load：必須已存在
       var a = auth(ss, p.name, p.pin, p.action === 'login');
       if (!a.ok) return out({ ok: false, error: a.error }, cb);
-      return out({ ok: true, created: !!a.created, name: a.name, days: daysOf(ss, a.name) }, cb);
+      if (p.action === 'login') markLogin(ss, a);
+      var st = daysOf(ss, a.name);
+      return out({
+        ok: true, created: !!a.created, name: a.name, role: a.role,
+        days: st.days, count: st.count
+      }, cb);
     } finally {
       lock.releaseLock();
     }
+  }
+
+  /**
+   * 第一位系統人員的開通入口：已經有系統人員之後就永遠回 already。
+   * 因為自我關閉，把它留在公開原始碼裡不會變成提權管道。
+   */
+  if (p.action === 'bootstrap_admin') {
+    var lk = LockService.getScriptLock();
+    try { lk.waitLock(20000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      if (hasAnyAdmin(ss)) return out({ ok: false, error: 'already' }, cb);
+      var b = auth(ss, p.name, p.pin, true);
+      if (!b.ok) return out({ ok: false, error: b.error }, cb);
+      b.sh.getRange(b.row, U_ROLE).setValue('admin');
+      return out({ ok: true, name: b.name, role: 'admin', created: !!b.created }, cb);
+    } finally {
+      lk.releaseLock();
+    }
+  }
+
+  if (p.action === 'admin_users') {
+    var au = requireAdmin(ss, p);
+    if (!au.ok) return out(au, cb);
+    return out({ ok: true, users: adminUsers(ss) }, cb);
+  }
+
+  if (p.action === 'admin_create') {
+    var ac = requireAdmin(ss, p);
+    if (!ac.ok) return out(ac, cb);
+    var nn = cleanName(p.newname), np = String(p.newpin || '');
+    if (!nn || !/^\d{4}$/.test(np)) return out({ ok: false, error: 'bad_input' }, cb);
+    var ex = findUser(ss, nn);
+    if (ex.row > 0) return out({ ok: false, error: 'exists' }, cb);
+    ex.sh.appendRow([nn, hashPin(nn, np), new Date(), new Date(), 'user', 0, '']);
+    return out({ ok: true, name: nn }, cb);
+  }
+
+  if (p.action === 'admin_setpin') {
+    var ap = requireAdmin(ss, p);
+    if (!ap.ok) return out(ap, cb);
+    var tn = cleanName(p.target), tp = String(p.newpin || '');
+    if (!tn || !/^\d{4}$/.test(tp)) return out({ ok: false, error: 'bad_input' }, cb);
+    var t = findUser(ss, tn);
+    if (t.row < 0) return out({ ok: false, error: 'no_user' }, cb);
+    t.sh.getRange(t.row, U_HASH).setValue(hashPin(tn, tp));
+    return out({ ok: true, name: tn }, cb);
+  }
+
+  // 診斷用：時區錯了每日統計會整個切錯天，出問題時先看這個
+  if (p.action === 'tz') {
+    var now = new Date();
+    return out({
+      ok: true,
+      sheetTz: ss.getSpreadsheetTimeZone(),
+      scriptTz: Session.getScriptTimeZone(),
+      iso: now.toISOString(),
+      bySheet: Utilities.formatDate(now, ss.getSpreadsheetTimeZone() || 'Asia/Taipei', 'yyyy-MM-dd HH:mm'),
+      byTaipei: Utilities.formatDate(now, 'Asia/Taipei', 'yyyy-MM-dd HH:mm')
+    }, cb);
+  }
+
+  if (p.action === 'admin_rebuild') {
+    var ar = requireAdmin(ss, p);
+    if (!ar.ok) return out(ar, cb);
+    var lk2 = LockService.getScriptLock();
+    try { lk2.waitLock(30000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      return out({ ok: true, rows: rebuildDaily(ss) }, cb);
+    } finally {
+      lk2.releaseLock();
+    }
+  }
+
+  if (p.action === 'admin_delete') {
+    var ad = requireAdmin(ss, p);
+    if (!ad.ok) return out(ad, cb);
+    var dn = cleanName(p.target);
+    if (!dn) return out({ ok: false, error: 'bad_input' }, cb);
+    // 不能砍自己，避免後台把自己鎖在外面
+    if (dn === ad.name) return out({ ok: false, error: 'self' }, cb);
+    var t2 = findUser(ss, dn);
+    if (t2.row < 0) return out({ ok: false, error: 'no_user' }, cb);
+    t2.sh.deleteRow(t2.row);
+    // 練習記錄刻意保留：帳號刪掉只是不能再登入，歷史資料還在試算表裡可查
+    return out({ ok: true, name: dn }, cb);
   }
 
   return HtmlService.createHtmlOutput(
