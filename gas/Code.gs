@@ -54,9 +54,46 @@ function ymd(v) {
   return String(v);
 }
 
-function stamp(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'MM/dd HH:mm');
-  return v ? String(v) : '';
+/**
+ * 時間欄一律寫成台北時間的純文字。
+ *
+ * 原因：把 Date 寫進儲存格，Sheets 會存成「試算表時區的牆上時間」，
+ * 讀回來卻是把那串牆上時間當成 UTC 的 Date —— 整個被平移了試算表的時區偏移
+ * （這張表是 America/Los_Angeles，實測差 7 小時）。存文字就完全繞開這件事。
+ */
+function nowText() {
+  return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
+}
+
+/** 試算表時區相對 UTC 的偏移量，用來還原舊資料裡被平移過的 Date */
+function sheetOffsetMs(ss) {
+  var t = new Date();
+  var utc = Utilities.formatDate(t, 'UTC', 'yyyy/MM/dd HH:mm:ss');
+  var loc = Utilities.formatDate(t, ss.getSpreadsheetTimeZone() || TZ, 'yyyy/MM/dd HH:mm:ss');
+  return new Date(loc).getTime() - new Date(utc).getTime();
+}
+
+/**
+ * 還原成真正的時間點。舊資料是 Date（被平移過，補回偏移量）；新資料是文字（直接解析）。
+ * 註：補償用的是「現在」的偏移量，跨日光節約時間的舊資料可能差一小時，
+ * 但只影響顯示與極少數剛好卡在午夜的分日，新資料存文字後不會再有這問題。
+ */
+function realDate(v, off) {
+  if (v instanceof Date) return new Date(v.getTime() - off);
+  var s = String(v || '').trim();
+  if (!s) return null;
+  var d = new Date(s.indexOf('T') < 0 ? s.replace(/-/g, '/') : s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function stampOf(v, off) {
+  var d = realDate(v, off);
+  return d ? Utilities.formatDate(d, TZ, 'MM/dd HH:mm') : (v ? String(v) : '');
+}
+
+function ymdOf(v, off) {
+  var d = realDate(v, off);
+  return d ? Utilities.formatDate(d, TZ, 'yyyy-MM-dd') : '';
 }
 
 function sheetOf(ss, name, head) {
@@ -66,13 +103,19 @@ function sheetOf(ss, name, head) {
     writeHead(sh, head);
     sh.setFrozenRows(1);
     sh.autoResizeColumns(1, head.length);
+    // 時間/日期欄一開始就設成純文字，否則 Sheets 會轉成日期型別，再被試算表時區位移一天。
+    //
+    // 只在「建表當下」設，絕對不要對既有資料補設：
+    // 把已經存著日期值的欄位改成純文字，getValues() 會只讀到顯示字串
+    // （顯示格式是只有日期的話，時分秒就直接消失）。這件事踩過一次，不要再踩。
+    if (name === SH_DAILY) sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@');
+    if (name === SH_HANDS) sh.getRange(1, 1, sh.getMaxRows(), 2).setNumberFormat('@');
+    if (name === SH_USERS) sh.getRange(1, U_CREATED, sh.getMaxRows(), 2).setNumberFormat('@');
+    if (name === SH_LOGIN) sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@');
   } else if (sh.getLastColumn() < head.length) {
     // 舊表補欄位：只寫標題，既有資料列留空，讀取一律用 || 0 兜底
     writeHead(sh, head);
   }
-  // 日期欄一律純文字，否則 Sheets 會轉成日期型別，再被試算表時區位移一天
-  if (name === SH_DAILY) sh.getRange(1, 1, sh.getMaxRows(), 1).setNumberFormat('@');
-  if (name === SH_HANDS) sh.getRange(1, 2, sh.getMaxRows(), 1).setNumberFormat('@');
   return sh;
 }
 
@@ -133,11 +176,11 @@ function auth(ss, name, pin, createIfMissing) {
   var h = hashPin(name, pin);
   if (u.row < 0) {
     if (!createIfMissing) return { ok: false, error: 'no_user' };
-    u.sh.appendRow([name, h, new Date(), new Date(), 'user', 0, '']);
+    u.sh.appendRow([name, h, nowText(), nowText(), 'user', 0, '']);
     return { ok: true, created: true, name: name, role: 'user', row: u.sh.getLastRow(), sh: u.sh, logins: 0 };
   }
   if (u.hash !== h) return { ok: false, error: 'bad_pin' };
-  u.sh.getRange(u.row, U_USED).setValue(new Date());
+  u.sh.getRange(u.row, U_USED).setValue(nowText());
   return { ok: true, created: false, name: name, role: u.role, row: u.row, sh: u.sh, logins: u.logins };
 }
 
@@ -163,9 +206,9 @@ function hasAnyAdmin(ss) {
 /** 記一次登入：帳號表累加次數，另外在登入記錄留一列時間 */
 function markLogin(ss, a) {
   a.sh.getRange(a.row, U_LOGINS).setValue((a.logins || 0) + 1);
-  a.sh.getRange(a.row, U_LASTLOGIN).setValue(new Date());
+  a.sh.getRange(a.row, U_LASTLOGIN).setValue(nowText());
   var sh = sheetOf(ss, SH_LOGIN, HEAD_LOGIN);
-  sh.appendRow([new Date(), a.name, a.role || 'user']);
+  sh.appendRow([nowText(), a.name, a.role || 'user']);
   var last = sh.getLastRow();
   if (last > LOGIN_KEEP + 500) sh.deleteRows(2, last - 1 - LOGIN_KEEP);
 }
@@ -190,6 +233,7 @@ function daysOf(ss, name) {
 /** 系統人員儀表板：每個帳號的登入與練習狀況 */
 function adminUsers(ss) {
   var sh = sheetOf(ss, SH_USERS, HEAD_USERS);
+  var off = sheetOffsetMs(ss);
   var last = sh.getLastRow();
   if (last < 2) return [];
 
@@ -225,9 +269,9 @@ function adminUsers(ss) {
     res.push({
       name: name,
       role: String(v[j][U_ROLE - 1] || 'user'),
-      created: stamp(v[j][U_CREATED - 1]),
+      created: stampOf(v[j][U_CREATED - 1], off),
       // 舊帳號沒有「最後登入」，退回用「最後使用」
-      lastLogin: stamp(v[j][U_LASTLOGIN - 1] || v[j][U_USED - 1]),
+      lastLogin: stampOf(v[j][U_LASTLOGIN - 1] || v[j][U_USED - 1], off),
       logins: Number(v[j][U_LOGINS - 1]) || 0,
       hands: g2.hands, correct: g2.correct,
       count: g2.count, ccorrect: g2.ccorrect,
@@ -267,7 +311,8 @@ function doPost(e) {
       var when = new Date(r[0]);
       if (isNaN(when.getTime())) when = new Date();
       var day = Utilities.formatDate(when, TZ, 'yyyy-MM-dd');
-      buf.push([when, day, player, r[1], r[2], r[3], r[4], r[5], r[6], r[7]]);
+      buf.push([Utilities.formatDate(when, TZ, 'yyyy-MM-dd HH:mm:ss'), day, player,
+                r[1], r[2], r[3], r[4], r[5], r[6], r[7]]);
       var k = day + ' ' + player;
       if (!daily[k]) daily[k] = { day: day, player: player, n: 0, ok: 0, cn: 0, cok: 0 };
       // 算牌題目不能混進策略手數，否則前端的「練習記錄」正確率會被稀釋
@@ -330,18 +375,22 @@ function bumpDaily(ss, daily) {
 function rebuildDaily(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   var hands = sheetOf(ss, SH_HANDS, HEAD_HANDS);
+  var off = sheetOffsetMs(ss);
   var last = hands.getLastRow();
   var daily = {}, order = [];
   if (last > 1) {
     var v = hands.getRange(2, 1, last - 1, HEAD_HANDS.length).getValues();
     var fixed = [];
     for (var i = 0; i < v.length; i++) {
-      var when = v[i][0], player = String(v[i][2]);
+      var player = String(v[i][2]);
       var old = String(v[i][1] || '');
-      if (!player) { fixed.push([old]); continue; }
-      // 時間欄萬一不是日期型別就退回用原本的日期字串，寧可日期偏一天也不要整列漏掉
-      var day = (when instanceof Date) ? ymd(when) : old;
-      fixed.push([day]);                       // 順便把手牌記錄的「日期」欄也補正
+      var real = realDate(v[i][0], off);
+      // 順便把時間欄從 Date 改寫成台北時間的純文字，之後就不必再靠偏移量還原
+      var timeText = real ? Utilities.formatDate(real, TZ, 'yyyy-MM-dd HH:mm:ss') : String(v[i][0] || '');
+      if (!player) { fixed.push([timeText, old]); continue; }
+      // 時間欄解不出來才退回用原本的日期字串，寧可日期偏一天也不要整列漏掉
+      var day = real ? Utilities.formatDate(real, TZ, 'yyyy-MM-dd') : old;
+      fixed.push([timeText, day]);
       if (!day) continue;
       var k = day + ' ' + player;
       var e = daily[k];
@@ -352,7 +401,7 @@ function rebuildDaily(ss) {
         e.n++; if (v[i][8] === 'O') e.ok++;
       }
     }
-    hands.getRange(2, 2, fixed.length, 1).setValues(fixed);
+    hands.getRange(2, 1, fixed.length, 2).setValues(fixed);
   }
 
   var sh = sheetOf(ss, SH_DAILY, HEAD_DAILY);
@@ -425,7 +474,7 @@ function doGet(e) {
     if (!nn || !/^\d{4}$/.test(np)) return out({ ok: false, error: 'bad_input' }, cb);
     var ex = findUser(ss, nn);
     if (ex.row > 0) return out({ ok: false, error: 'exists' }, cb);
-    ex.sh.appendRow([nn, hashPin(nn, np), new Date(), new Date(), 'user', 0, '']);
+    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '']);
     return out({ ok: true, name: nn }, cb);
   }
 
