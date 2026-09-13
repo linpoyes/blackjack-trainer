@@ -32,7 +32,7 @@ var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6,
 
 // Google 登入用的 OAuth 用戶端 ID。這不是密鑰，它本來就會出現在前端網頁原始碼裡。
 // 空字串＝Google 登入關閉，前端不會顯示那顆按鈕。
-var GOOGLE_CLIENT_ID = '';
+var GOOGLE_CLIENT_ID = '209043588691-91pglvi5jifcshmvohs8g0snqbae7dor.apps.googleusercontent.com';
 
 /**
  * 放在最前面：編輯器預設會選第一個函式，所以第一個函式必須無參數且可安全執行。

@@ -860,7 +860,8 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 </section>
 
 <footer>
-  戰勝21點 · 練習用，不構成任何投注建議
+  戰勝21點 · 練習用，不構成任何投注建議<br>
+  <a href="privacy.html" style="color:var(--muted)">隱私權政策</a>　·　<a href="terms.html" style="color:var(--muted)">服務條款</a>
 </footer>
 </div>
 
@@ -2129,7 +2130,7 @@ function closeGate(){
    ID Token 一定要送到後端驗（前端自己解出來的身分誰都能偽造）；
    後端驗過之後發一把 64 碼權杖，之後所有呼叫拿它當密碼用，跟四位數密碼同一條路。
    空字串＝還沒設定 OAuth 用戶端，整塊不顯示，密碼登入照常運作。 */
-const GOOGLE_CLIENT_ID="";
+const GOOGLE_CLIENT_ID="209043588691-91pglvi5jifcshmvohs8g0snqbae7dor.apps.googleusercontent.com";
 let gIdToken="";
 
 function googleInit(){

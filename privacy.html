@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>隱私權政策 · 戰勝21點</title>
+<style>
+:root{color-scheme:dark;
+  --bg:#0F1214;--surface:#171B1E;--hair:rgba(237,235,230,.14);--hair-2:rgba(237,235,230,.28);
+  --text:#EDEBE6;--muted:#9AA0A2;--brass:#C6A34B;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:17px;line-height:1.8;padding:0 0 60px}
+.wrap{max-width:600px;margin:0 auto;padding:0 20px}
+header{padding:calc(26px + env(safe-area-inset-top)) 0 0}
+h1{font-size:23px;font-weight:700;letter-spacing:.06em;margin:0 0 4px}
+h1 em{font-style:normal;color:var(--brass)}
+.sub{color:var(--muted);font-size:14px;margin:0 0 6px}
+.upd{font-family:var(--mono);font-size:12.5px;color:var(--muted);
+  padding-bottom:14px;border-bottom:1px solid var(--hair-2)}
+h2{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;margin:30px 0 10px;padding-bottom:8px;
+  border-bottom:1px solid var(--hair-2)}
+p{margin:0 0 14px}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+b{font-weight:700}
+a{color:var(--brass)}
+.box{border:1px solid var(--hair);border-radius:2px;background:var(--surface);
+  padding:14px 16px;margin:0 0 14px;font-size:16px}
+footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--hair-2);
+  font-size:13.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>隱私權政策</h1>
+  <p class="sub">戰勝<em>21</em>點 · 21點基本策略練習器</p>
+  <p class="upd">最後更新：2026-09-13</p>
+</header>
+
+<p>戰勝21點是一個練習工具，由個人開發，免費提供。這份政策說明它收集什麼、不收集什麼。</p>
+
+<h2>會收集的資料</h2>
+<div class="box">
+  <ul>
+    <li><b>你取的暱稱</b>——用來分辨記錄是誰的</li>
+    <li><b>四位數字密碼的雜湊值</b>（SHA-256）。原始密碼不會被儲存，我們也看不到</li>
+    <li><b>練習記錄</b>——每一次判斷的牌型、你選了什麼、正解、對錯、花了幾秒</li>
+    <li><b>登入時間與次數</b></li>
+  </ul>
+</div>
+
+<h2>用 Google 登入的話</h2>
+<p>如果你選擇用 Google 登入，我們只會取得並儲存 Google 帳號的<b>使用者識別碼</b>（一串數字），用來在你下次登入時找回同一份記錄。</p>
+<p>我們<b>不會</b>儲存你的電子郵件地址、姓名或大頭貼，也不會存取你的 Gmail、雲端硬碟或任何其他 Google 服務。</p>
+
+<h2>不會做的事</h2>
+<ul>
+  <li>不收集電話、地址、生日、付款資訊或任何身分證件資料</li>
+  <li>不追蹤你在其他網站的行為，沒有廣告，沒有第三方分析工具</li>
+  <li>不販售、不出租、不交換你的資料給任何人</li>
+</ul>
+
+<h2>資料放在哪裡</h2>
+<p>資料儲存在開發者個人的 Google 試算表中，透過 Google Apps Script 存取。傳輸過程全程使用 HTTPS 加密。</p>
+<p>練習頁本身是靜態網頁，部分資料也會存在你自己裝置的瀏覽器裡（localStorage），方便離線練習。</p>
+
+<h2>要刪除資料</h2>
+<p>App 內「設定 → 清除本機記錄」可以清掉這台裝置上的資料；「算牌 → 清除算牌記錄」會連雲端的算牌記錄一起刪除。</p>
+<p>要完全刪除整個帳號與所有練習記錄，寄信到下面的信箱告知你的暱稱即可，會在七天內處理完成。</p>
+
+<h2>兒童</h2>
+<p>本工具內容涉及 21 點的策略與計算，不適合未滿 18 歲者使用，也不針對兒童收集任何資料。</p>
+
+<h2>這不是賭博服務</h2>
+<p>本工具<b>不提供任何真實金錢的下注、儲值或兌換</b>，也沒有任何虛擬貨幣可以購買。它只是一個練習與計算工具，不構成任何投注建議。</p>
+
+<h2>政策變更</h2>
+<p>如果這份政策有修改，會更新本頁上方的日期。</p>
+
+<h2>聯絡方式</h2>
+<p>jerry0928211793@gmail.com</p>
+
+<footer>
+  <a href="./">← 回到練習頁</a>　·　<a href="terms.html">服務條款</a>
+</footer>
+</div>
+</body>
+</html>
