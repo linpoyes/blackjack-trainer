@@ -17,6 +17,7 @@
 
 <!-- 加到手機主畫面 -->
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0F1214">
@@ -129,9 +130,13 @@ nav button[aria-selected="true"]::after{transform:scaleX(1)}
 .card .ci{position:absolute;top:4px;left:6px;font-size:14px;font-weight:600;line-height:1;text-align:center}
 .card .ci em{display:block;font-style:normal;font-size:12px;margin-top:1px}
 .card .cp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:35px;line-height:1;padding-top:5px}
+  font-size:34px;font-weight:600;line-height:1;padding-top:4px;letter-spacing:-.01em}
+.card .cp.w{font-size:29px}                       /* 「10」兩個字元，縮一點才不會頂到邊 */
+/* 一對 A 一定要分牌，漏看代價最大，所以只有 A 換底色 */
+.card.ace{background:#F7E6B8;border-color:rgba(0,0,0,.42)}
 .card.red{color:var(--card-red)}
 .card.sm{width:52px;height:74px}.card.sm .cp{font-size:26px}
+.card.sm .cp.w{font-size:22px}
 .card.sm .ci{font-size:12px;top:4px;left:5px}.card.sm .ci em{font-size:10px}
 .card.back{background:repeating-linear-gradient(45deg,#1D4E6B 0 5px,#16405A 5px 10px);border-color:rgba(0,0,0,.5)}
 .card.back .cp,.card.back .ci{opacity:0}
@@ -1064,10 +1069,15 @@ function card(v){
   const s=rnd(SUITS);
   return {v:v,label:v===11?"A":(v===10?rnd(["10","J","Q","K"]):String(v)),suit:s[0],red:s[1]};
 }
+/* 牌面中央放「點數」不是花色：21 點完全不看花色，
+   原本中央是大花色的話，A 跟 10 J Q K 看起來一模一樣，只能靠角落 14px 的小字分辨。
+   A 另外給金色底——一對 A 一定要分牌，漏看代價最大。 */
 function cardEl(c,sm,back){
   const d=document.createElement("div");
-  d.className="card"+(sm?" sm":"")+(back?" back":(c&&c.red?" red":""));
-  if(!back)d.innerHTML='<div class="ci">'+c.label+'<em>'+c.suit+'</em></div><div class="cp">'+c.suit+'</div>';
+  d.className="card"+(sm?" sm":"")+
+    (back?" back":((c&&c.red?" red":"")+(c&&c.v===11?" ace":"")));
+  if(!back)d.innerHTML='<div class="ci">'+c.label+'<em>'+c.suit+'</em></div>'+
+    '<div class="cp'+(String(c.label).length>1?" w":"")+'">'+c.label+'</div>';
   return d;
 }
 function value(cards){

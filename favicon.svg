@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0F1214"/>
+  <rect x="14" y="11" width="28" height="40" rx="4" fill="#F7E6B8" stroke="#0F1214" stroke-width="2"/>
+  <text x="28" y="42" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="30"
+        font-weight="700" fill="#16191B" text-anchor="middle">A</text>
+  <text x="48" y="55" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="22"
+        font-weight="700" fill="#C6A34B" text-anchor="middle">21</text>
+</svg>

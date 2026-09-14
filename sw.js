@@ -11,10 +11,10 @@
  * 後端（Apps Script）完全不攔截：讓它自己失敗，前端本來就會把記錄排進佇列，
  * 等有網路再補傳。攔下來反而會把失敗包裝成看起來成功。
  */
-var CACHE = 'bj21-v1';
+var CACHE = 'bj21-v2';   // 換了快取清單就要換版號，否則舊的快取不會更新
 var PAGE = './index.html';
 var ASSETS = [
-  './', PAGE, './manifest.json', './favicon.png',
+  './', PAGE, './manifest.json', './favicon.svg', './favicon.png',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'
 ];
 
