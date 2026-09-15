@@ -2,7 +2,9 @@
  * 戰勝21點 · 練習記錄後端
  * 綁定在「戰勝21點 練習記錄」試算表上，由 GitHub Pages 上的前端呼叫。
  *
- * 帳號     ：暱稱 + 四位數字密碼（只存 SHA-256 雜湊，試算表看不到原始密碼）
+ * 帳號     ：一律用 Google 登入（後端驗 ID Token 後發權杖，只存雜湊）。
+ *            舊的「暱稱 + 四位數字密碼」帳號還在，但只剩 merge 用得到——
+ *            先用 Google 登入，再驗舊密碼把舊記錄併過來。
  * 手牌記錄 ：每一次判斷一列（策略判斷與算牌題目都寫這裡，用「來源」欄區分）
  * 每日統計 ：日期 × 練習者，策略手數與算牌題數分開兩組欄位（增量更新，不重算全表）
  * 登入記錄 ：每次登入一列，給系統人員的使用者儀表板看
@@ -33,6 +35,12 @@ var U_NAME = 1, U_HASH = 2, U_CREATED = 3, U_USED = 4, U_ROLE = 5, U_LOGINS = 6,
 // Google 登入用的 OAuth 用戶端 ID。這不是密鑰，它本來就會出現在前端網頁原始碼裡。
 // 空字串＝Google 登入關閉，前端不會顯示那顆按鈕。
 var GOOGLE_CLIENT_ID = '209043588691-91pglvi5jifcshmvohs8g0snqbae7dor.apps.googleusercontent.com';
+
+// 只准 Google 登入。前端已經拿掉密碼欄位，這裡是真的關卡——
+// 端點是公開的，光把畫面藏起來擋不住直接打網址的人。
+// 已經發出去的權杖不受影響（doPost 與各端點照常驗），
+// merge 仍然會驗舊帳號的四位數密碼，那是「證明這個舊帳號是你的」，不是登入。
+var GOOGLE_ONLY = true;
 
 /**
  * 放在最前面：編輯器預設會選第一個函式，所以第一個函式必須無參數且可安全執行。
@@ -573,6 +581,8 @@ function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   if (p.action === 'login' || p.action === 'load' || p.action === 'register') {
+    // 暱稱＋密碼登入已經關掉。load 是純讀取（要帶已發出的權杖），留著不影響。
+    if (GOOGLE_ONLY && p.action !== 'load') return out({ ok: false, error: 'google_required' }, cb);
     var lock = LockService.getScriptLock();
     try { lock.waitLock(20000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
     try {
@@ -615,26 +625,23 @@ function doGet(e) {
     return out({ ok: true, users: adminUsers(ss) }, cb);
   }
 
-  if (p.action === 'admin_create') {
-    var ac = requireAdmin(ss, p);
-    if (!ac.ok) return out(ac, cb);
-    var nn = cleanName(p.newname), np = String(p.newpin || '');
-    if (!nn || !/^\d{4}$/.test(np)) return out({ ok: false, error: 'bad_input' }, cb);
-    var ex = findUser(ss, nn);
-    if (ex.row > 0) return out({ ok: false, error: 'exists' }, cb);
-    ex.sh.appendRow([nn, hashPin(nn, np), nowText(), nowText(), 'user', 0, '', '', '']);
-    return out({ ok: true, name: nn }, cb);
-  }
+  // 建立帳號（admin_create）與重設密碼（admin_setpin）跟著密碼登入一起取消了：
+  // 帳號只能由本人按 Google 自動產生，密碼也沒有地方能拿來登入。
 
-  if (p.action === 'admin_setpin') {
-    var ap = requireAdmin(ss, p);
-    if (!ap.ok) return out(ap, cb);
-    var tn = cleanName(p.target), tp = String(p.newpin || '');
-    if (!tn || !/^\d{4}$/.test(tp)) return out({ ok: false, error: 'bad_input' }, cb);
-    var t = findUser(ss, tn);
-    if (t.row < 0) return out({ ok: false, error: 'no_user' }, cb);
-    t.sh.getRange(t.row, U_HASH).setValue(hashPin(tn, tp));
-    return out({ ok: true, name: tn }, cb);
+  /**
+   * 給／收系統人員權限。角色存在帳號表的角色欄，這裡是唯一會動它的端點。
+   * 不能改自己：要收自己的權限請別的系統人員動手，避免後台把最後一個人鎖在外面。
+   */
+  if (p.action === 'admin_setrole') {
+    var sr = requireAdmin(ss, p);
+    if (!sr.ok) return out(sr, cb);
+    var rn = cleanName(p.target), rv = String(p.role || '');
+    if (!rn || (rv !== 'admin' && rv !== 'user')) return out({ ok: false, error: 'bad_input' }, cb);
+    if (rn === sr.name) return out({ ok: false, error: 'self' }, cb);
+    var tr = findUser(ss, rn);
+    if (tr.row < 0) return out({ ok: false, error: 'no_user' }, cb);
+    tr.sh.getRange(tr.row, U_ROLE).setValue(rv);
+    return out({ ok: true, name: rn, role: rv }, cb);
   }
 
   /**

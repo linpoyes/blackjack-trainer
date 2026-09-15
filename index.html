@@ -488,12 +488,22 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .ulist .st{font-family:var(--mono);font-size:13.5px;color:var(--muted);text-align:right;white-space:nowrap}
 .ulist .mt{font-family:var(--mono);font-size:12.5px;color:var(--muted);grid-column:1/3;line-height:1.65}
 .ulist li.none,.ulist li.load{color:var(--muted);grid-template-columns:1fr;cursor:default}
-.ulist li.upin{display:flex;gap:7px;align-items:center;padding:10px 0 13px;cursor:default;
+.ulist li.uact{display:flex;gap:7px;align-items:center;padding:10px 0 13px;cursor:default;
   background:var(--surface);animation:slide .16s ease-out both}
-.ulist li.upin input{flex:1;min-width:0}
-.ulist li.upin button{white-space:nowrap;padding:9px 15px;border:1px solid var(--hair-2);
+.ulist li.uact button{flex:1;white-space:nowrap;padding:10px 14px;border:1px solid var(--hair-2);
   border-radius:3px;background:var(--surface-2);color:var(--text);font-family:inherit;
   font-size:14px;cursor:pointer}
+.ulist li.err{grid-template-columns:1fr auto;color:var(--hit);cursor:default;align-items:center}
+.ulist li.err button{padding:8px 14px;border:1px solid var(--hair-2);border-radius:3px;
+  background:var(--surface-2);color:var(--text);font-family:inherit;font-size:14px;cursor:pointer}
+.badge.off{background:transparent;color:var(--muted);border:1px solid var(--hair-2);font-weight:500}
+/* 儀表板工具列：搜尋在上、排序在下，窄螢幕也不會擠成一團 */
+.utool{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.utool input{width:100%;padding:10px 12px;border:1px solid var(--hair-2);border-radius:3px;
+  background:var(--surface);color:var(--text);font-family:inherit;font-size:15px}
+.utool input:focus{outline:none;border-color:var(--brass)}
+.utool .seg{margin:0}
+.ustate{font-family:var(--mono);font-size:12px;color:var(--muted);margin:9px 0 0;text-align:right}
 
 @media (max-width:400px){
   .wrap{padding:0 14px}
@@ -525,18 +535,14 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
         </button>
         <div id="g-gbtn"></div>
       </div>
-      <div class="gor"><span>或</span></div>
     </div>
 
-    <div id="g-pw">
-    <label class="label" for="g-name">暱稱</label>
-    <input id="g-name" class="gin" type="text" maxlength="12" placeholder="例如：彥彥" autocomplete="off">
-    <label class="label" for="g-pin">四位數字密碼</label>
-    <input id="g-pin" class="gin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
-    <button class="gbtn" id="g-go">開始練習</button>
+    <!-- Google 那顆按鈕要等 accounts.google.com 的指令碼載進來才畫得出來。
+         載不到就整頁沒有任何入口，所以留一個重新載入的出口。 -->
+    <div id="g-wait" class="ghint" style="text-align:center">載入中…</div>
+
     <p class="gmsg" id="g-msg"></p>
-    <p class="ghint">沒用過的暱稱會直接幫你開帳號。換手機、換瀏覽器打同一組，就會看到同一份記錄。</p>
-    </div>
+    <p class="ghint" id="g-old"></p>
   </div>
 </div>
 <div class="a2hs hide" id="a2hs">
@@ -861,26 +867,26 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
   </div>
 
   <div id="adm" class="hide">
-    <h2>建立帳號 <span class="badge">系統人員</span></h2>
-    <div class="setblk">
-      <div class="r"><span>暱稱</span>
-        <input id="ad-name" class="kin" type="text" maxlength="12" style="text-align:left" autocomplete="off"></div>
-      <div class="r"><span>四位數字密碼</span>
-        <input id="ad-pin" class="kin" type="text" inputmode="numeric" maxlength="4" autocomplete="off"></div>
-    </div>
-    <button class="next2" id="ad-create">建立帳號</button>
-    <p class="gmsg" id="ad-msg"></p>
-
     <h2>使用者儀表板 <span class="badge">系統人員</span></h2>
-    <div class="metrics">
+    <div class="metrics five">
       <div class="metric"><div class="v" id="ad-u">—</div><div class="k">帳號數</div></div>
       <div class="metric"><div class="v" id="ad-a">—</div><div class="k">今日練習</div></div>
+      <div class="metric"><div class="v" id="ad-w">—</div><div class="k">7 天活躍</div></div>
       <div class="metric"><div class="v" id="ad-h">—</div><div class="k">總手數</div></div>
       <div class="metric"><div class="v" id="ad-c">—</div><div class="k">平均正確率</div></div>
     </div>
+    <div class="utool">
+      <input id="ad-q" type="search" placeholder="搜尋暱稱" autocomplete="off">
+      <div class="seg mini" id="ad-sort">
+        <button type="button" data-s="login" aria-selected="true">最後登入</button>
+        <button type="button" data-s="hands" aria-selected="false">手數</button>
+        <button type="button" data-s="acc" aria-selected="false">正確率</button>
+        <button type="button" data-s="name" aria-selected="false">暱稱</button>
+      </div>
+    </div>
     <ul class="ulist" id="ad-list"></ul>
-    <button class="next2" id="ad-refresh" style="margin-top:10px">重新整理</button>
-    <p class="note">點一下任何一位使用者可以重設他的四位數字密碼。密碼只存雜湊，系統人員也看不到原本的密碼。</p>
+    <p class="ustate" id="ad-state"></p>
+    <button class="next2" id="ad-refresh">重新整理</button>
   </div>
 </section>
 
@@ -949,19 +955,37 @@ const QKEY="bj-sync-queue",NKEY="bj-player",PKEY="bj-pin";
 let syncing=false,lastSync=0;
 function playerName(){return localStorage.getItem(NKEY)||"";}
 function playerPin(){return localStorage.getItem(PKEY)||"";}
-/* 跨網域要讀回應只能走 JSONP；寫入才能用 POST no-cors */
-function jsonp(params,done){
-  var fn="__bj"+Math.random().toString(36).slice(2,9),sc=document.createElement("script"),fired=false;
-  function finish(d){if(fired)return;fired=true;
-    try{delete window[fn];}catch(e){window[fn]=undefined;}
-    if(sc.parentNode)sc.parentNode.removeChild(sc);done(d);}
-  window[fn]=function(d){finish(d);};
-  var q=[];for(var k in params)q.push(encodeURIComponent(k)+"="+encodeURIComponent(params[k]));
-  sc.src=SYNC_URL+"?"+q.join("&")+"&callback="+fn;
-  sc.onerror=function(){finish({ok:false,error:"network"});};
-  /* GAS 冷啟動實測要 35 秒左右，逾時抓太短會讓其實成功的請求看起來像失敗 */
-  setTimeout(function(){finish({ok:false,error:"timeout"});},45000);
-  document.body.appendChild(sc);
+/* 跨網域要讀回應只能走 JSONP；寫入才能用 POST no-cors
+   opt.tries：只有「純讀取」的動作可以設大於 1。
+   Apps Script 的 /exec 在冷啟動或剛換版本時會先回一陣子 404，script 標籤收到 404
+   幾百毫秒內就 onerror——不重送的話畫面會說「連不上伺服器」，其實再送一次就通了。
+   會寫資料的動作（建立、合併、改名、刪除）絕對不要開，重送會做兩次。 */
+function jsonp(params,done,opt){
+  opt=opt||{};
+  var tries=opt.tries||1,round=0;
+  function attempt(){
+    round++;
+    var fn="__bj"+Math.random().toString(36).slice(2,9),sc=document.createElement("script"),fired=false,tid;
+    function finish(d){if(fired)return;fired=true;
+      clearTimeout(tid);
+      try{delete window[fn];}catch(e){window[fn]=undefined;}
+      if(sc.parentNode)sc.parentNode.removeChild(sc);
+      /* 逾時不重送：那是伺服器真的慢，再等一輪 45 秒只是讓人乾等 */
+      if(d&&d.ok===false&&(d.error==="network"||d.error==="busy")&&round<tries){
+        if(opt.onretry)opt.onretry(round);
+        setTimeout(attempt,700*round);
+        return;
+      }
+      done(d);}
+    window[fn]=function(d){finish(d);};
+    var q=[];for(var k in params)q.push(encodeURIComponent(k)+"="+encodeURIComponent(params[k]));
+    sc.src=SYNC_URL+"?"+q.join("&")+"&callback="+fn+"&_="+round+Math.random().toString(36).slice(2,7);
+    sc.onerror=function(){finish({ok:false,error:"network"});};
+    /* GAS 冷啟動實測要 35 秒左右，逾時抓太短會讓其實成功的請求看起來像失敗 */
+    tid=setTimeout(function(){finish({ok:false,error:"timeout"});},45000);
+    document.body.appendChild(sc);
+  }
+  attempt();
 }
 function queueRow(r){
   if(!SYNC_URL)return;
@@ -2035,65 +2059,143 @@ function paintSet(){
   if(!$("rn-name").value)$("rn-name").value=playerName();
   paintSync();
   $("mergebox").classList.toggle("hide",localStorage.getItem(GKEY)!=="1"||!playerName());
+  /* 剛從密碼帳號換過來的人，要併的一定是那個暱稱，直接幫他填 */
+  if(legacyName&&!$("mg-name").value&&legacyName!==playerName())$("mg-name").value=legacyName;
   $("adm").classList.toggle("hide",!isAdmin());
-  if(isAdmin()&&playerName()&&!admLoaded)admLoad();
+  if(isAdmin()&&playerName()&&!admLoaded)admOpen();
+}
+
+/* ═══ 使用者儀表板 ═══
+   這頁常常是「點進設定就馬上要看到東西」，但後端冷啟動要 35 秒，
+   所以：先把上次的結果畫出來（標明是幾點的），再背景更新；
+   失敗時保留舊資料並給一顆「再試一次」，不要整頁變成「連不上伺服器」。 */
+const ACKEY="bj-adm-cache";
+let admUsers=[],admStamp="",admBusy=false,admQ="",admSort="login";
+
+function hhmm(t){
+  const d=t?new Date(t):new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function admState(s){$("ad-state").textContent=s||"";}
+function admOpen(){
+  if(!admUsers.length){
+    try{
+      const c=JSON.parse(localStorage.getItem(ACKEY)||"null");
+      if(c&&c.users&&c.users.length){
+        admUsers=c.users;admStamp=hhmm(c.t);admRender();
+        admState(admStamp+" 的資料，更新中…");
+      }
+    }catch(e){}
+  }
+  admLoad();
 }
 function admLoad(){
+  if(admBusy)return;
+  admBusy=true;
   const ul=$("ad-list");
-  ul.innerHTML='<li class="load">讀取中…</li>';
+  if(!admUsers.length){ul.innerHTML='<li class="load">讀取中…</li>';admState("");}
+  else admState(admStamp+" 的資料，更新中…");
   jsonp({action:"admin_users",name:playerName(),pin:playerPin()},function(d){
+    admBusy=false;
     if(!d||!d.ok){
-      ul.innerHTML='<li class="none">'+(d&&d.error==="forbidden"?"沒有權限":"連不上伺服器")+'</li>';
+      if(d&&d.error==="forbidden"){
+        admUsers=[];ul.innerHTML='<li class="none">沒有權限</li>';admState("");return;}
+      /* 有舊資料就繼續顯示舊的，只在角落說一聲；沒有才整塊換成重試 */
+      if(admUsers.length){admState("更新失敗，顯示 "+admStamp+" 的資料");return;}
+      ul.innerHTML="";
+      const li=document.createElement("li");
+      li.className="err";
+      li.innerHTML='<span>'+((d&&d.error==="timeout")?"伺服器沒有回應":"連不上伺服器")+'</span>';
+      const b=document.createElement("button");
+      b.type="button";b.textContent="再試一次";
+      b.onclick=function(){admLoad();};
+      li.appendChild(b);ul.appendChild(li);
+      admState("");
       return;}
-    admLoaded=true;admRender(d.users||[]);});
+    admLoaded=true;
+    admUsers=d.users||[];
+    admStamp=hhmm();
+    try{localStorage.setItem(ACKEY,JSON.stringify({t:Date.now(),users:admUsers}));}catch(e){}
+    admRender();
+    admState("更新於 "+admStamp);
+  },{tries:3,onretry:function(){if(!admUsers.length)admState("伺服器喚醒中…");}});
 }
-function admRender(us){
+function admAcc(u){return u.hands?u.correct/u.hands:-1;}
+function admSorted(){
+  const q=admQ.trim().toLowerCase();
+  const us=admUsers.filter(function(u){
+    return !q||String(u.name).toLowerCase().indexOf(q)>=0;});
+  us.sort(function(a,b){
+    if(admSort==="hands")return (b.hands||0)-(a.hands||0);
+    if(admSort==="acc")return admAcc(b)-admAcc(a);
+    if(admSort==="name")return String(a.name).localeCompare(String(b.name),"zh-Hant");
+    return String(b.lastLogin||"").localeCompare(String(a.lastLogin||""));});
+  return us;
+}
+function admRender(){
   const ul=$("ad-list");ul.innerHTML="";
-  let hands=0,corr=0,act=0;
-  us.forEach(function(u){
+  let hands=0,corr=0,act=0,wk=0;
+  /* 7 天活躍：含今天往前數七天內有練過的人 */
+  const d7=new Date();d7.setDate(d7.getDate()-6);
+  const since=dayKey(d7),today=dayKey();
+  admUsers.forEach(function(u){
     hands+=u.hands||0;corr+=u.correct||0;
-    if(u.todayHands||u.todayCount)act++;});
-  $("ad-u").textContent=us.length;
+    if(u.todayHands||u.todayCount)act++;
+    if(u.lastDay&&u.lastDay>=since)wk++;});
+  $("ad-u").textContent=admUsers.length;
   $("ad-a").textContent=act;
+  $("ad-w").textContent=wk;
   $("ad-h").textContent=hands.toLocaleString("en-US");
   $("ad-c").textContent=hands?Math.round(corr/hands*100)+"%":"—";
-  if(!us.length){ul.innerHTML='<li class="none">還沒有任何帳號</li>';return;}
+  const us=admSorted();
+  if(!us.length){
+    ul.innerHTML='<li class="none">'+(admUsers.length?"沒有符合的暱稱":"還沒有任何帳號")+'</li>';
+    return;}
   us.forEach(function(u){
     const li=document.createElement("li");
     li.dataset.n=u.name;
     const acc=u.hands?Math.round(u.correct/u.hands*100)+"%":"—";
+    const cacc=u.count?Math.round(u.ccorrect/u.count*100)+"%":"—";
     li.innerHTML='<span class="nm">'+esc(u.name)+
-      (u.role==="admin"?' <span class="badge">系統人員</span>':"")+'</span>'+
-      '<span class="st">'+(u.hands||0)+' 手 · '+acc+'</span>'+
+      (u.role==="admin"?' <span class="badge">系統人員</span>':"")+
+      (u.google?"":' <span class="badge off">未綁 Google</span>')+
+      (u.lastDay===today?' <span class="badge">今天</span>':"")+'</span>'+
+      '<span class="st">'+(u.hands||0).toLocaleString("en-US")+' 手 · '+acc+'</span>'+
       '<span class="mt">最後登入 '+esc(u.lastLogin||"—")+'　共 '+(u.logins||0)+' 次'+
-      (u.google?'　Google 登入':'')+
-      '<br>練習 '+(u.days||0)+' 天　算牌 '+(u.count||0)+' 題'+
+      '<br>練習 '+(u.days||0)+' 天　算牌 '+(u.count||0)+' 題 · '+cacc+
       (u.lastDay?'　最後練習 '+esc(u.lastDay):"")+'</span>';
     ul.appendChild(li);});
 }
+$("ad-q").oninput=function(){admQ=this.value;admRender();};
+$("ad-sort").onclick=function(e){
+  const b=e.target.closest("button");if(!b)return;
+  admSort=b.dataset.s;
+  this.querySelectorAll("button").forEach(function(x){
+    x.setAttribute("aria-selected",x===b?"true":"false");});
+  admRender();};
 $("ad-list").onclick=function(e){
   const li=e.target.closest("li");
-  if(!li||!li.dataset.n||li.classList.contains("upin"))return;
+  if(!li||!li.dataset.n||li.classList.contains("uact"))return;
   const nx=li.nextElementSibling;
-  if(nx&&nx.classList.contains("upin")){nx.remove();return;}
-  $("ad-list").querySelectorAll("li.upin").forEach(function(x){x.remove();});
+  if(nx&&nx.classList.contains("uact")){nx.remove();return;}
+  $("ad-list").querySelectorAll("li.uact").forEach(function(x){x.remove();});
+  const u=admUsers.filter(function(x){return x.name===li.dataset.n;})[0]||{};
+  const me=u.name===playerName();
   const row=document.createElement("li");
-  row.className="upin";
-  row.innerHTML='<input class="kin" type="text" inputmode="numeric" maxlength="4" '+
-    'placeholder="新的四位數字密碼" autocomplete="off">'+
-    '<button type="button" data-a="pin">重設</button>'+
+  row.className="uact";
+  /* 密碼登入已經取消，這裡不再有重設密碼；剩下的是給不給系統人員、以及刪帳號 */
+  row.innerHTML='<button type="button" data-a="role">'+
+      (u.role==="admin"?"取消系統人員":"設為系統人員")+'</button>'+
     '<button type="button" data-a="del" style="color:var(--hit)">刪除</button>';
-  const inp=row.querySelector("input");
-  const bPin=row.querySelector('[data-a="pin"]'),bDel=row.querySelector('[data-a="del"]');
-  bPin.onclick=function(){
-    const v=inp.value.trim();
-    if(!/^\d{4}$/.test(v)){inp.style.borderColor="var(--hit)";return;}
-    bPin.disabled=true;bPin.textContent="…";
-    jsonp({action:"admin_setpin",name:playerName(),pin:playerPin(),
-           target:li.dataset.n,newpin:v},function(d){
-      bPin.disabled=false;
-      bPin.textContent=(d&&d.ok)?"已重設":"失敗";
-      if(d&&d.ok)setTimeout(function(){row.remove();},900);});};
+  const bRole=row.querySelector('[data-a="role"]'),bDel=row.querySelector('[data-a="del"]');
+  if(me){bRole.disabled=true;bDel.disabled=true;bRole.textContent="這是你自己";}
+  bRole.onclick=function(){
+    bRole.disabled=true;bRole.textContent="…";
+    jsonp({action:"admin_setrole",name:playerName(),pin:playerPin(),
+           target:u.name,role:u.role==="admin"?"user":"admin"},function(d){
+      if(d&&d.ok){row.remove();admLoad();return;}
+      bRole.disabled=false;
+      bRole.textContent=(d&&d.error==="self")?"不能改自己":"失敗，再按一次";});};
   /* 刪除要點兩次才真的送出，避免在手機上滑一滑就誤刪別人的帳號 */
   bDel.onclick=function(){
     if(bDel.dataset.arm!=="1"){
@@ -2101,30 +2203,16 @@ $("ad-list").onclick=function(e){
       setTimeout(function(){bDel.dataset.arm="";bDel.textContent="刪除";},4000);
       return;}
     bDel.disabled=true;bDel.textContent="…";
-    jsonp({action:"admin_delete",name:playerName(),pin:playerPin(),target:li.dataset.n},
+    jsonp({action:"admin_delete",name:playerName(),pin:playerPin(),target:u.name},
       function(d){
-        if(d&&d.ok){row.remove();li.remove();admLoaded=false;admLoad();return;}
+        if(d&&d.ok){
+          row.remove();li.remove();
+          admUsers=admUsers.filter(function(x){return x.name!==u.name;});
+          admRender();admLoad();return;}
         bDel.disabled=false;
         bDel.textContent=(d&&d.error==="self")?"不能刪自己":"失敗";});};
   li.after(row);};
-$("ad-create").onclick=function(){
-  const nm=$("ad-name").value.trim(),pin=$("ad-pin").value.trim(),m=$("ad-msg"),btn=this;
-  m.className="gmsg";
-  if(!nm){m.textContent="請輸入暱稱";return;}
-  if(!/^\d{4}$/.test(pin)){m.textContent="密碼要剛好四位數字";return;}
-  btn.disabled=true;m.textContent="建立中…";
-  jsonp({action:"admin_create",name:playerName(),pin:playerPin(),newname:nm,newpin:pin},
-    function(d){
-      btn.disabled=false;
-      if(!d||!d.ok){
-        m.textContent=(d&&d.error==="exists")?"這個暱稱已經有人用了"
-          :(d&&d.error==="forbidden")?"沒有權限"
-          :(d&&d.error==="bad_input")?"暱稱或密碼格式不對":"連不上伺服器";
-        return;}
-      m.className="gmsg ok";m.textContent="已建立 "+nm;
-      $("ad-name").value="";$("ad-pin").value="";
-      admLoaded=false;admLoad();});};
-$("ad-refresh").onclick=function(){admLoaded=false;admLoad();};
+$("ad-refresh").onclick=function(){admLoad();};
 $("deck-seg").onclick=function(e){
   const b=e.target.closest("button");if(!b)return;
   tblDecks=parseInt(b.dataset.d,10);
@@ -2137,6 +2225,9 @@ $("deck-seg").onclick=function(e){
    applyRemote 是「取較大者」合併，不清的話上一個人的手數會黏在新帳號上。 */
 function freshIfNewPlayer(name){
   if(!name||localStorage.getItem(NKEY)===name)return;
+  /* 還沒送出去的那幾列是上一個人的。留著的話下一次同步會用新帳號的名義送出去，
+     記錄就掛到不相干的人頭上，寧可丟掉。 */
+  try{localStorage.removeItem(QKEY);}catch(e){}
   stats={total:0,correct:0,streak:0,byKey:{},days:{},reviews:[],errors:[]};
   cstats={q:0,correct:0,streak:0,best:0,days:{}};
   save();csave();
@@ -2167,15 +2258,22 @@ function closeGate(){
   paint();renderChart();renderLog();cPaint();paintSet();
 }
 /* ═══ Google 登入 ═══
-   目的是「記錄跟著帳號」：用 Google 登入就不會因為忘記四位數密碼而失去練習記錄。
+   全站只有這一條路進得來：記錄跟著 Google 帳號走，換手機、清快取都不會掉，
+   也不會再有人因為忘記四位數密碼而失去練習記錄。
    ID Token 一定要送到後端驗（前端自己解出來的身分誰都能偽造）；
-   後端驗過之後發一把 64 碼權杖，之後所有呼叫拿它當密碼用，跟四位數密碼同一條路。
-   空字串＝還沒設定 OAuth 用戶端，整塊不顯示，密碼登入照常運作。 */
+   後端驗過之後發一把 64 碼權杖，之後所有呼叫拿它當密碼用。 */
 const GOOGLE_CLIENT_ID="209043588691-91pglvi5jifcshmvohs8g0snqbae7dor.apps.googleusercontent.com";
 let gIdToken="";
 
+/* 進不去的唯一可能是 Google 的指令碼載不到（擋廣告的外掛、公司網路、離線）。
+   這是現在唯一的入口，所以一定要說得出原因，並且給一顆重新載入。 */
+function googleFail(why){
+  if(!$("g-google").classList.contains("hide"))return;
+  $("g-wait").innerHTML=esc(why)+'<br><br>'+
+    '<button type="button" class="gbtn" id="g-again">重新載入</button>';
+  $("g-again").onclick=function(){location.reload();};
+}
 function googleInit(){
-  if(!GOOGLE_CLIENT_ID)return;
   const sc=document.createElement("script");
   sc.src="https://accounts.google.com/gsi/client";
   sc.async=true;sc.defer=true;
@@ -2187,6 +2285,7 @@ function googleInit(){
         auto_select:false,
         cancel_on_tap_outside:true
       });
+      $("g-wait").classList.add("hide");
       $("g-google").classList.remove("hide");
       const w=Math.max(200,Math.min(400,Math.round($("g-google").clientWidth)));
       google.accounts.id.renderButton($("g-gbtn"),
@@ -2198,9 +2297,14 @@ function googleInit(){
         if(g&&g.getBoundingClientRect().height>20)
           $("g-face").style.height=Math.round(g.getBoundingClientRect().height)+"px";
       },400);
-    }catch(e){}
+    }catch(e){googleFail("Google 登入載入失敗");}
   };
-  /* 載不到就當作沒有這個功能，密碼登入不受影響 */
+  sc.onerror=function(){
+    googleFail(navigator.onLine===false
+      ? "現在沒有網路，連上網路後才能登入"
+      : "連不到 Google 登入服務");
+  };
+  setTimeout(function(){googleFail("Google 登入載入得比較慢");},12000);
   document.head.appendChild(sc);
 }
 let gWait=null;
@@ -2216,6 +2320,8 @@ function googleCred(res){
   googleGo();
 }
 function googleGo(){
+  /* 這是唯一的入口，被 /exec 那個間歇 404 擋下來的代價最大：
+     404 時後端根本沒執行，重送不會生出第二個帳號。 */
   jsonp({action:"google",idt:gIdToken},function(d){
     clearTimeout(gWait);
     if(d&&d.ok){googleDone(d);return;}
@@ -2225,7 +2331,9 @@ function googleGo(){
       :(e==="bad_token"||e==="expired"||e==="bad_aud")?"Google 驗證沒通過，請再試一次"
       :e==="timeout"?"伺服器沒有回應，請再按一次"
       :"連不上伺服器，請檢查網路後再試";
-  });
+  },{tries:3,onretry:function(){
+    const m=$("g-msg");m.className="gmsg";m.textContent="伺服器喚醒中，再等一下…";
+  }});
 }
 function googleDone(d){
   /* 權杖就是之後的密碼，跟四位數密碼放同一個位置，後面所有呼叫都不用改 */
@@ -2233,7 +2341,7 @@ function googleDone(d){
   localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,d.token);
   localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
   localStorage.setItem(GKEY,"1");
-  admLoaded=false;gIdToken="";
+  admReset();gIdToken="";
   applyRemote(d.days);applyCount(d.count);
   const m=$("g-msg");m.className="gmsg ok";
   m.textContent=d.created?("帳號建立完成："+d.name)
@@ -2298,50 +2406,39 @@ $("mg-go").onclick=function(){
   });
 };
 
-function gateGo(){
-  var nm=$("g-name").value.trim(),pin=$("g-pin").value.trim(),msg=$("g-msg"),btn=$("g-go");
-  msg.className="gmsg";
-  if(!nm){msg.textContent="請輸入暱稱";return;}
-  if(!/^\d{4}$/.test(pin)){msg.textContent="密碼要剛好四位數字";return;}
-  btn.disabled=true;msg.textContent="登入中…";
-  jsonp({action:"login",name:nm,pin:pin},function(d){
-    btn.disabled=false;
-    if(!d||!d.ok){
-      msg.textContent=(d&&d.error==="bad_pin")?"這個暱稱已經有人用了，密碼不對"
-        :(d&&d.error==="timeout")?"伺服器沒有回應，請再按一次"
-        :(d&&d.error==="bad_input")?"暱稱或密碼格式不對"
-        /* 離線時講清楚是網路問題，不要讓人以為帳號壞了 */
-        :(navigator.onLine===false)?"現在沒有網路。登入過一次之後就能離線練習。"
-        :"連不上伺服器，請檢查網路後再試";
-      return;
-    }
-    freshIfNewPlayer(d.name);
-    localStorage.setItem(NKEY,d.name);localStorage.setItem(PKEY,pin);
-    localStorage.setItem(RKEY,d.role==="admin"?"admin":"user");
-    localStorage.removeItem(GKEY);
-    admLoaded=false;
-    applyRemote(d.days);applyCount(d.count);
-    msg.className="gmsg ok";
-    msg.textContent=d.created?("已建立新帳號："+d.name)
-      :("已載入 "+(d.days?d.days.length:0)+" 天的記錄");
-    setTimeout(closeGate,600);
-  });
+/* ═══ 登入關卡 ═══
+   只有 Google 一條路。舊的「暱稱＋四位數密碼」帳號與它的雲端記錄都還在，
+   但要先用 Google 進來，再到設定裡「合併舊帳號」接回去（那一步要驗舊密碼）。 */
+let legacyName="";
+function admReset(){
+  admLoaded=false;admUsers=[];admStamp="";admQ="";
+  $("ad-q").value="";admState("");
+  try{localStorage.removeItem(ACKEY);}catch(e){}
 }
-$("g-go").onclick=gateGo;
-["g-name","g-pin"].forEach(function(id){
-  $(id).addEventListener("keydown",function(ev){if(ev.key==="Enter")gateGo();});
-});
 $("switch").onclick=function(){
   syncQueue(true);
   localStorage.removeItem(NKEY);localStorage.removeItem(PKEY);
   localStorage.removeItem(RKEY);localStorage.removeItem(GKEY);
-  admLoaded=false;$("adm").classList.add("hide");
-  $("g-name").value="";$("g-pin").value="";
+  admReset();$("adm").classList.add("hide");
+  /* 不清掉的話 Google 會直接拿上一個帳號再登入一次，換人就換不掉 */
+  try{google.accounts.id.disableAutoSelect();}catch(e){}
   $("g-msg").textContent="";$("g-msg").className="gmsg";
+  $("g-old").textContent="";
   $("gate").classList.remove("hide");
   window.scrollTo({top:0,behavior:"instant"});
 };
-if(playerName()&&playerPin())$("gate").classList.add("hide");
+(function(){
+  const signedIn=!!(playerName()&&playerPin());
+  const viaGoogle=localStorage.getItem(GKEY)==="1";
+  if(signedIn&&viaGoogle){$("gate").classList.add("hide");return;}
+  if(signedIn){
+    /* 之前用密碼登入的人：不再自動放行，但先把還沒送出的記錄送完，
+       暱稱也留著，等一下合併舊帳號時直接幫他填好 */
+    legacyName=playerName();
+    syncQueue(true);
+    $("g-old").textContent="「"+legacyName+"」的記錄還在，用 Google 登入後到設定裡併回來。";
+  }
+})();
 
 /* ═══ 離線與加到主畫面 ═══ */
 if("serviceWorker" in navigator){
