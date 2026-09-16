@@ -415,14 +415,15 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 /* Google 那顆按鈕有使用者的 session 時會自己變成白底＋大頭貼的樣式，
    跟深色版面完全不搭而且改不動。作法：畫一顆自己的按鈕，
    把 Google 的按鈕透明化疊在上面接點擊——外觀我們控制，行為還是它的。 */
-.gwrap{position:relative}
 .gbtn-g{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
   height:48px;padding:0;border:1px solid var(--hair-2);border-radius:3px;
   background:var(--surface);color:var(--text);font-family:inherit;font-size:16px;
   cursor:pointer;transition:background .16s}
+.gbtn-g.hide{display:none}
 .gbtn-g:active{background:var(--surface-2)}
 .gbtn-g svg{flex:0 0 18px}
-#g-gbtn{position:absolute;left:0;top:0;right:0;bottom:0;opacity:0;overflow:hidden}
+/* Google 那顆按鈕維持它原本的樣子，只把它擺中間——蓋住或調透明度都會被它自己擋下來 */
+#g-gbtn{display:flex;justify-content:center;min-height:44px}
 .gor{display:flex;align-items:center;gap:12px;margin:20px 0 22px;color:var(--muted);font-size:13px}
 .gor::before,.gor::after{content:"";flex:1;height:1px;background:var(--hair-2)}
 .gnew-t{text-align:center;font-size:15px;margin:0 0 18px;color:var(--text)}
@@ -525,9 +526,13 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
     <div class="glogo">戰勝<em>21</em>點</div>
     <p class="gsub">基本策略練習器</p>
 
+    <!-- Google 畫的按鈕要「看得見、沒被蓋住」它才會理你。
+         以前把它 opacity:0 疊在自製按鈕上換樣式，Google 的防點擊劫持會擋掉，
+         使用者看到的就是「按了完全沒反應」。現在直接露出它原本的樣子。 -->
     <div id="g-google" class="hide">
-      <div class="gwrap">
-        <button type="button" class="gbtn-g" id="g-face">
+      <div id="g-gbtn"></div>
+      <!-- 它畫不出來時才拿這顆頂替，改走 One Tap -->
+      <button type="button" class="gbtn-g hide" id="g-face">
           <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
             <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
             <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
@@ -536,8 +541,6 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
           </svg>
           <span>使用 Google 帳號登入</span>
         </button>
-        <div id="g-gbtn"></div>
-      </div>
     </div>
 
     <!-- Google 那顆按鈕要等 accounts.google.com 的指令碼載進來才畫得出來。
@@ -2356,18 +2359,15 @@ function googleInit(){
   setTimeout(function(){googleFail("Google 登入載入得比較慢");},12000);
   document.head.appendChild(sc);
 }
-/* 那顆真正能按的是 Google 畫的按鈕，透明疊在自己那顆上面。
-   如果它沒畫出來（來源沒授權、被外掛擋掉），空的 div 一樣會把點擊吃掉——
-   看起來就是「按了完全沒反應」。所以要盯著它，沒畫出來就把 div 收掉、改用 One Tap。 */
+/* 盯著 Google 那顆按鈕有沒有真的畫出來（來源沒授權、被外掛擋掉時不會）。
+   沒畫出來就換自己那顆頂替，改走 One Tap，至少還有一條路可以按。 */
 function gWatch(n){
   const g=$("g-gbtn").firstElementChild;
   const h=g?Math.round(g.getBoundingClientRect().height):0;
-  if(h>20){
-    gReady=true;
-    $("g-face").style.height=h+"px";
-    return;}
+  if(h>20){gReady=true;return;}
   if(n<6){setTimeout(function(){gWatch(n+1);},600);return;}
   $("g-gbtn").style.display="none";
+  $("g-face").classList.remove("hide");
   $("g-face").onclick=function(){
     const m=$("g-msg");m.className="gmsg";m.textContent="";
     try{
