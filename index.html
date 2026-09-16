@@ -493,6 +493,9 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair-2);font-
 .ulist li.uact button{flex:1;white-space:nowrap;padding:10px 14px;border:1px solid var(--hair-2);
   border-radius:3px;background:var(--surface-2);color:var(--text);font-family:inherit;
   font-size:14px;cursor:pointer}
+.ulist li.uact button:disabled{opacity:.4;cursor:default}
+.ulist li.uact select{flex:1;min-width:0;padding:10px 8px;border:1px solid var(--hair-2);
+  border-radius:3px;background:var(--surface-2);color:var(--text);font-family:inherit;font-size:14px}
 .ulist li.err{grid-template-columns:1fr auto;color:var(--hit);cursor:default;align-items:center}
 .ulist li.err button{padding:8px 14px;border:1px solid var(--hair-2);border-radius:3px;
   background:var(--surface-2);color:var(--text);font-family:inherit;font-size:14px;cursor:pointer}
@@ -2183,12 +2186,41 @@ $("ad-list").onclick=function(e){
   const me=u.name===playerName();
   const row=document.createElement("li");
   row.className="uact";
-  /* 密碼登入已經取消，這裡不再有重設密碼；剩下的是給不給系統人員、以及刪帳號 */
+  /* 密碼登入已經取消，這裡不再有重設密碼；剩下的是給不給系統人員、把記錄併給別人、刪帳號。
+     「併給別人」只出現在沒綁 Google 的舊帳號上——它是唯一會被併掉的那一邊。 */
   row.innerHTML='<button type="button" data-a="role">'+
       (u.role==="admin"?"取消系統人員":"設為系統人員")+'</button>'+
+    (u.google?"":'<button type="button" data-a="merge">併給…</button>')+
     '<button type="button" data-a="del" style="color:var(--hit)">刪除</button>';
   const bRole=row.querySelector('[data-a="role"]'),bDel=row.querySelector('[data-a="del"]');
+  const bMerge=row.querySelector('[data-a="merge"]');
   if(me){bRole.disabled=true;bDel.disabled=true;bRole.textContent="這是你自己";}
+  if(bMerge)bMerge.onclick=function(){
+    /* 換成「把這個舊帳號的記錄併給誰」的選單。忘記四位數密碼的人自己併不了，
+       但他是誰店裡本來就知道，由系統人員確認後直接併。 */
+    row.innerHTML="";
+    const sel=document.createElement("select");
+    admUsers.forEach(function(x){
+      if(x.name===u.name)return;
+      const o=document.createElement("option");
+      o.value=x.name;o.textContent=x.name+(x.google?"":"（未綁 Google）");
+      sel.appendChild(o);});
+    const ok=document.createElement("button");
+    ok.type="button";ok.textContent="併過去";
+    ok.onclick=function(){
+      if(ok.dataset.arm!=="1"){
+        ok.dataset.arm="1";ok.textContent="確定併給「"+sel.value+"」？";
+        setTimeout(function(){ok.dataset.arm="";ok.textContent="併過去";},5000);
+        return;}
+      ok.disabled=true;sel.disabled=true;ok.textContent="…";
+      jsonp({action:"admin_merge",name:playerName(),pin:playerPin(),
+             from:u.name,into:sel.value},function(d){
+        if(d&&d.ok){row.remove();li.remove();admLoad();return;}
+        ok.disabled=false;sel.disabled=false;
+        ok.textContent=(d&&d.error==="from_linked")?"這個帳號有人在用"
+          :(d&&d.error==="busy")?"忙線中，再按一次":"失敗，再按一次";});};
+    row.appendChild(sel);row.appendChild(ok);
+    if(!sel.options.length){row.textContent="只有這一個帳號";}};
   bRole.onclick=function(){
     bRole.disabled=true;bRole.textContent="…";
     jsonp({action:"admin_setrole",name:playerName(),pin:playerPin(),
@@ -2265,15 +2297,37 @@ function closeGate(){
 const GOOGLE_CLIENT_ID="209043588691-91pglvi5jifcshmvohs8g0snqbae7dor.apps.googleusercontent.com";
 let gIdToken="";
 
-/* 進不去的唯一可能是 Google 的指令碼載不到（擋廣告的外掛、公司網路、離線）。
-   這是現在唯一的入口，所以一定要說得出原因，並且給一顆重新載入。 */
-function googleFail(why){
-  if(!$("g-google").classList.contains("hide"))return;
+/* LINE、Facebook、IG 的內建瀏覽器：Google 自己會擋掉在 WebView 裡的登入
+   （disallowed_useragent），按下去只會看到一頁英文錯誤。與其讓人撞牆，先講清楚。
+   Chrome、Firefox、Edge 的 iOS 版（CriOS/FxiOS/EdgiOS）是真的瀏覽器，不算在內。 */
+const EMBED=/Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|KAKAOTALK|Twitter/i.test(navigator.userAgent);
+let gReady=false;
+
+/* 進不去的可能：Google 的指令碼載不到（擋廣告的外掛、公司網路、離線），
+   或是載到了但按鈕畫不出來。這是唯一的入口，一定要說得出原因並給一條路走。 */
+function googleFail(why,copy){
+  if(gReady)return;
+  gReady=true;
+  $("g-google").classList.add("hide");
+  $("g-wait").classList.remove("hide");
   $("g-wait").innerHTML=esc(why)+'<br><br>'+
-    '<button type="button" class="gbtn" id="g-again">重新載入</button>';
-  $("g-again").onclick=function(){location.reload();};
+    (copy?'<button type="button" class="gbtn" id="g-copy">複製網址</button>':
+          '<button type="button" class="gbtn" id="g-again">重新載入</button>');
+  const again=$("g-again");
+  if(again)again.onclick=function(){location.reload();};
+  const cp=$("g-copy");
+  if(cp)cp.onclick=function(){
+    const url=location.href.split("#")[0];
+    try{navigator.clipboard.writeText(url).then(function(){cp.textContent="已複製，貼到 Safari";},
+      function(){cp.textContent=url;});}
+    catch(e){cp.textContent=url;}
+  };
 }
 function googleInit(){
+  if(EMBED){
+    googleFail("這個 App 的內建瀏覽器不能用 Google 登入，請用 Safari 或 Chrome 開啟",true);
+    return;
+  }
   const sc=document.createElement("script");
   sc.src="https://accounts.google.com/gsi/client";
   sc.async=true;sc.defer=true;
@@ -2291,12 +2345,7 @@ function googleInit(){
       google.accounts.id.renderButton($("g-gbtn"),
         {theme:"filled_black",size:"large",shape:"rectangular",
          text:"continue_with",locale:"zh-TW",width:w});
-      /* 讓自己的按鈕跟它一樣高，透明的那顆才會完整蓋住可點範圍 */
-      setTimeout(function(){
-        const g=$("g-gbtn").firstElementChild;
-        if(g&&g.getBoundingClientRect().height>20)
-          $("g-face").style.height=Math.round(g.getBoundingClientRect().height)+"px";
-      },400);
+      gWatch(0);
     }catch(e){googleFail("Google 登入載入失敗");}
   };
   sc.onerror=function(){
@@ -2306,6 +2355,29 @@ function googleInit(){
   };
   setTimeout(function(){googleFail("Google 登入載入得比較慢");},12000);
   document.head.appendChild(sc);
+}
+/* 那顆真正能按的是 Google 畫的按鈕，透明疊在自己那顆上面。
+   如果它沒畫出來（來源沒授權、被外掛擋掉），空的 div 一樣會把點擊吃掉——
+   看起來就是「按了完全沒反應」。所以要盯著它，沒畫出來就把 div 收掉、改用 One Tap。 */
+function gWatch(n){
+  const g=$("g-gbtn").firstElementChild;
+  const h=g?Math.round(g.getBoundingClientRect().height):0;
+  if(h>20){
+    gReady=true;
+    $("g-face").style.height=h+"px";
+    return;}
+  if(n<6){setTimeout(function(){gWatch(n+1);},600);return;}
+  $("g-gbtn").style.display="none";
+  $("g-face").onclick=function(){
+    const m=$("g-msg");m.className="gmsg";m.textContent="";
+    try{
+      google.accounts.id.prompt(function(t){
+        if(t&&((t.isNotDisplayed&&t.isNotDisplayed())||(t.isSkippedMoment&&t.isSkippedMoment())))
+          m.textContent="這個瀏覽器擋住了 Google 登入，請改用 Safari 或 Chrome";
+      });
+    }catch(e){m.textContent="這個瀏覽器擋住了 Google 登入，請改用 Safari 或 Chrome";}
+  };
+  gReady=true;
 }
 let gWait=null;
 function googleCred(res){

@@ -629,6 +629,38 @@ function doGet(e) {
   // 帳號只能由本人按 Google 自動產生，密碼也沒有地方能拿來登入。
 
   /**
+   * 系統人員把一個舊帳號的記錄整包併到另一個帳號，不需要舊密碼。
+   *
+   * 為什麼要有這個：改成只准 Google 登入之後，舊的「暱稱＋四位數密碼」帳號只能靠
+   * 本人記得密碼才併得回來（merge）。忘記密碼的人就真的拿不回記錄了——
+   * 但他的身分本來就是店裡認得的人，由系統人員確認後直接併，比重設密碼合理。
+   *
+   * 來源帳號會被刪掉（記錄已經改掛到目標帳號名下）。
+   * 併完一定要 rebuildDaily：同一天兩個名字各一列，不重算會互相蓋掉。
+   */
+  if (p.action === 'admin_merge') {
+    var am = requireAdmin(ss, p);
+    if (!am.ok) return out(am, cb);
+    var mf = cleanName(p.from), mi = cleanName(p.into);
+    if (!mf || !mi || mf === mi) return out({ ok: false, error: 'bad_input' }, cb);
+    var mlk2 = LockService.getScriptLock();
+    try { mlk2.waitLock(30000); } catch (err) { return out({ ok: false, error: 'busy' }, cb); }
+    try {
+      var uf = findUser(ss, mf), ui = findUser(ss, mi);
+      if (uf.row < 0) return out({ ok: false, error: 'no_from' }, cb);
+      if (ui.row < 0) return out({ ok: false, error: 'no_into' }, cb);
+      // 來源還綁著 Google＝那個帳號現在有人在用，不要誤併
+      if (uf.gid) return out({ ok: false, error: 'from_linked' }, cb);
+      renameEverywhere(ss, mf, mi);
+      uf.sh.deleteRow(uf.row);          // 帳號表沒有被 renameEverywhere 動到，列號還是對的
+      var nrows = rebuildDaily(ss);
+      return out({ ok: true, from: mf, into: mi, rows: nrows }, cb);
+    } finally {
+      mlk2.releaseLock();
+    }
+  }
+
+  /**
    * 給／收系統人員權限。角色存在帳號表的角色欄，這裡是唯一會動它的端點。
    * 不能改自己：要收自己的權限請別的系統人員動手，避免後台把最後一個人鎖在外面。
    */
