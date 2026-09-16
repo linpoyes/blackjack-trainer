@@ -2384,10 +2384,10 @@ function googleCred(res){
   if(!res||!res.credential)return;
   gIdToken=res.credential;
   const msg=$("g-msg");
-  msg.className="gmsg";msg.textContent="Google 驗證中…";
+  msg.className="gmsg";msg.textContent="登入中…";
   clearTimeout(gWait);
   gWait=setTimeout(function(){
-    if(msg.textContent==="Google 驗證中…")msg.textContent="伺服器喚醒中，第一次要等久一點…";
+    if(msg.textContent==="登入中…")msg.textContent="伺服器喚醒中，第一次要等久一點…";
   },7000);
   googleGo();
 }
